@@ -1376,6 +1376,127 @@
       flex-shrink: 0;
     }
 
+
+    /* ═══════════════════════════════════════
+       PATIENTS PAGE
+    ═══════════════════════════════════════ */
+    .page-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-toolbar-start { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .page-toolbar-end   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      width: 100%;
+      max-width: 340px;
+      transition: border-color var(--transition);
+    }
+
+    .search-box:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .search-box svg { width: 15px; height: 15px; color: var(--text-muted); flex-shrink: 0; }
+
+    .search-input {
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      width: 100%;
+      outline: none;
+      font-family: var(--font-main);
+    }
+
+    .search-input::placeholder { color: var(--text-muted); }
+
+    /* Stats strip */
+    .patients-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pt-stat {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pt-stat-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--accent);
+    }
+
+    .pt-stat-lbl {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 0.825rem;
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .page-btn svg { width: 14px; height: 14px; }
+    .page-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Gender badge */
+    .gender-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-inline-end: 5px;
+    }
+    .gender-dot.male   { background: var(--accent); }
+    .gender-dot.female { background: #e879a8; }
+
   </style>
 </head>
 <body>
@@ -1902,7 +2023,126 @@
       </div><!-- /page-dashboard -->
 
       <!-- Placeholder pages (filled in later chunks) -->
-      <div id="page-patients"  class="page-view"><div class="empty-state"><i data-lucide="users"></i><p>Patients</p></div></div>
+      <!-- PATIENTS PAGE -->
+      <div id="page-patients" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="patients-search" class="search-input" oninput="debouncePatientSearch(this.value)" />
+            </div>
+          </div>
+          <div class="page-toolbar-end">
+            <button class="btn btn-primary btn-sm" onclick="openPatientModal()">
+              <i data-lucide="user-plus"></i>
+              <span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>
+            </button>
+          </div>
+        </div>
+        <div class="patients-stats">
+          <div class="pt-stat"><span class="pt-stat-val" id="pt-stat-total">—</span><span class="pt-stat-lbl"><span class="ar">إجمالي</span><span class="en" style="display:none">Total</span></span></div>
+          <div class="pt-stat"><span class="pt-stat-val" id="pt-stat-today">—</span><span class="pt-stat-lbl"><span class="ar">اليوم</span><span class="en" style="display:none">Today</span></span></div>
+          <div class="pt-stat"><span class="pt-stat-val" id="pt-stat-month">—</span><span class="pt-stat-lbl"><span class="ar">هذا الشهر</span><span class="en" style="display:none">This Month</span></span></div>
+        </div>
+        <div class="table-wrap">
+          <table id="patients-table">
+            <thead><tr>
+              <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
+              <th><span class="ar">الهاتف</span><span class="en" style="display:none">Phone</span></th>
+              <th><span class="ar">العمر</span><span class="en" style="display:none">Age</span></th>
+              <th><span class="ar">تاريخ التسجيل</span><span class="en" style="display:none">Registered</span></th>
+              <th><span class="ar">آخر زيارة</span><span class="en" style="display:none">Last Visit</span></th>
+              <th></th>
+            </tr></thead>
+            <tbody id="patients-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner lg" style="margin:auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="patients-pagination"></div>
+      </div>
+
+      <!-- PATIENT MODAL -->
+      <div id="patient-modal" class="modal-backdrop hidden" onclick="closePatientModal(event)">
+        <div class="modal modal-lg" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title" id="patient-modal-title">
+              <span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>
+            </div>
+            <button class="modal-close" onclick="closePatientModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الاسم الكامل *</span><span class="en" style="display:none">Full Name *</span></label>
+                <input type="text" id="pt-name" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">رقم الهاتف</span><span class="en" style="display:none">Phone</span></label>
+                <input type="tel" id="pt-phone" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">تاريخ الميلاد</span><span class="en" style="display:none">Date of Birth</span></label>
+                <input type="date" id="pt-dob" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الجنس</span><span class="en" style="display:none">Gender</span></label>
+                <select id="pt-gender" class="form-control">
+                  <option value="">—</option>
+                  <option value="male">ذكر / Male</option>
+                  <option value="female">أنثى / Female</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label"><span class="ar">العنوان</span><span class="en" style="display:none">Address</span></label>
+                <input type="text" id="pt-address" class="form-control" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label"><span class="ar">ملاحظات</span><span class="en" style="display:none">Notes</span></label>
+                <textarea id="pt-notes" class="form-control" rows="3" style="resize:vertical"></textarea>
+              </div>
+            </div>
+            <div id="patient-form-error" class="form-error hidden" style="margin-top:8px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger btn-sm" id="pt-delete-btn" onclick="deletePatient()" style="margin-inline-end:auto;display:none">
+              <i data-lucide="trash-2"></i>
+              <span class="ar">حذف</span><span class="en" style="display:none">Delete</span>
+            </button>
+            <button class="btn btn-secondary" onclick="closePatientModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="pt-save-btn" onclick="savePatient()">
+              <i data-lucide="save"></i>
+              <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DELETE CONFIRM MODAL -->
+      <div id="pt-confirm-modal" class="modal-backdrop hidden" onclick="closePtConfirm(event)">
+        <div class="modal modal-sm" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title" style="color:var(--danger)">
+              <span class="ar">تأكيد الحذف</span><span class="en" style="display:none">Confirm Delete</span>
+            </div>
+            <button class="modal-close" onclick="closePtConfirm()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <p id="pt-confirm-msg" style="color:var(--text-secondary);font-size:0.9rem"></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closePtConfirm()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-danger" id="pt-confirm-yes-btn">
+              <i data-lucide="trash-2"></i>
+              <span class="ar">حذف نهائي</span><span class="en" style="display:none">Delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
       <div id="page-followup"  class="page-view"><div class="empty-state"><i data-lucide="calendar-check"></i><p>Follow-Up</p></div></div>
       <div id="page-lenses"    class="page-view"><div class="empty-state"><i data-lucide="circle-dot"></i><p>Lenses</p></div></div>
       <div id="page-frames"    class="page-view"><div class="empty-state"><i data-lucide="glasses"></i><p>Frames</p></div></div>
@@ -2062,7 +2302,7 @@
       logAudit('login');
 
       showScreen('app');
-      // Load dashboard data
+      // Load initial page data
       loadDashboard();
 
     } catch (err) {
@@ -2206,9 +2446,10 @@
     App.currentPage = page;
     closeSidebar();
 
-    // Refresh dashboard data when visiting it
-    if (page === 'dashboard' && App.clinic) {
-      loadDashboard();
+    // Refresh page data on navigate
+    if (App.clinic) {
+      if (page === 'dashboard') loadDashboard();
+      if (page === 'patients')  { Patients.page = 1; loadPatients(); }
     }
   }
 
@@ -2671,6 +2912,342 @@
   // ─────────────────────────────────────
   // START
   // ─────────────────────────────────────
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 3 — PATIENTS
+  // ═══════════════════════════════════════════════════
+
+  const Patients = {
+    list:        [],
+    page:        1,
+    pageSize:    20,
+    total:       0,
+    searchQuery: '',
+    editingId:   null,
+    searchTimer: null,
+  };
+
+  // ── Load patients page ──────────────────────────
+  async function loadPatients() {
+    const cid   = App.clinic.id;
+    const lang  = App.clinic.language || 'ar';
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                        .toISOString().slice(0, 10);
+
+    // Stats (parallel)
+    const [totalRes, todayRes, monthRes] = await Promise.all([
+      sb.from('patients').select('id', { count: 'exact', head: true }).eq('clinic_id', cid),
+      sb.from('patients').select('id', { count: 'exact', head: true }).eq('clinic_id', cid)
+        .gte('created_at', today + 'T00:00:00'),
+      sb.from('patients').select('id', { count: 'exact', head: true }).eq('clinic_id', cid)
+        .gte('created_at', monthStart + 'T00:00:00'),
+    ]);
+
+    document.getElementById('pt-stat-total').textContent = totalRes.count ?? '—';
+    document.getElementById('pt-stat-today').textContent = todayRes.count ?? '—';
+    document.getElementById('pt-stat-month').textContent = monthRes.count ?? '—';
+
+    await fetchPatients();
+  }
+
+  async function fetchPatients() {
+    const cid   = App.clinic.id;
+    const from  = (Patients.page - 1) * Patients.pageSize;
+    const to    = from + Patients.pageSize - 1;
+    const q     = Patients.searchQuery.trim();
+
+    const tbody = document.getElementById('patients-tbody');
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px"><div class="spinner lg" style="margin:auto"></div></td></tr>`;
+
+    let query = sb.from('patients')
+      .select('id, full_name, phone, dob, gender, created_at', { count: 'exact' })
+      .eq('clinic_id', cid)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (q) {
+      // Search by name (ilike) or phone
+      query = query.or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+    }
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-danger" style="padding:20px;text-align:center">${error.message}</td></tr>`;
+      return;
+    }
+
+    Patients.list  = data || [];
+    Patients.total = count || 0;
+
+    renderPatientsTable();
+    renderPatientsPagination();
+  }
+
+  function renderPatientsTable() {
+    const lang  = App.clinic.language || 'ar';
+    const tbody = document.getElementById('patients-tbody');
+
+    if (!Patients.list.length) {
+      const msg = Patients.searchQuery
+        ? (lang === 'ar' ? 'لا توجد نتائج' : 'No results found')
+        : (lang === 'ar' ? 'لا يوجد مرضى بعد — أضف أول مريض' : 'No patients yet — add your first patient');
+      tbody.innerHTML = `
+        <tr><td colspan="6">
+          <div class="empty-state" style="padding:48px 20px">
+            <i data-lucide="users"></i>
+            <p>${msg}</p>
+            ${!Patients.searchQuery ? `<button class="btn btn-primary btn-sm" onclick="openPatientModal()">
+              <i data-lucide="user-plus"></i>
+              <span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>
+            </button>` : ''}
+          </div>
+        </td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = Patients.list.map(p => {
+      const initials = p.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      const age      = p.dob ? calcAge(p.dob) : '—';
+      const genderDot = p.gender
+        ? `<span class="gender-dot ${p.gender}"></span>`
+        : '';
+      return `
+        <tr style="cursor:pointer" onclick="openPatientModal('${p.id}')">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="patient-avatar">${initials}</div>
+              <div>
+                <div style="font-weight:500">${genderDot}${p.full_name}</div>
+              </div>
+            </div>
+          </td>
+          <td class="font-mono text-sm">${p.phone || '—'}</td>
+          <td>${age}</td>
+          <td class="text-sm text-secondary">${formatDate(p.created_at)}</td>
+          <td class="text-sm text-muted">—</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openPatientModal('${p.id}')">
+              <i data-lucide="pencil"></i>
+            </button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    lucide.createIcons();
+  }
+
+  function renderPatientsPagination() {
+    const lang      = App.clinic.language || 'ar';
+    const container = document.getElementById('patients-pagination');
+    const pages     = Math.ceil(Patients.total / Patients.pageSize);
+
+    if (pages <= 1) { container.innerHTML = ''; return; }
+
+    let html = '';
+
+    // Prev
+    html += `<button class="page-btn" onclick="goToPage(${Patients.page - 1})" ${Patients.page === 1 ? 'disabled' : ''}>
+      <i data-lucide="${lang === 'ar' ? 'chevron-right' : 'chevron-left'}"></i>
+    </button>`;
+
+    // Pages
+    for (let i = 1; i <= pages; i++) {
+      if (i === 1 || i === pages || Math.abs(i - Patients.page) <= 1) {
+        html += `<button class="page-btn ${i === Patients.page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      } else if (Math.abs(i - Patients.page) === 2) {
+        html += `<span style="color:var(--text-muted);padding:0 4px">…</span>`;
+      }
+    }
+
+    // Next
+    html += `<button class="page-btn" onclick="goToPage(${Patients.page + 1})" ${Patients.page === pages ? 'disabled' : ''}>
+      <i data-lucide="${lang === 'ar' ? 'chevron-left' : 'chevron-right'}"></i>
+    </button>`;
+
+    container.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function goToPage(p) {
+    const pages = Math.ceil(Patients.total / Patients.pageSize);
+    if (p < 1 || p > pages) return;
+    Patients.page = p;
+    fetchPatients();
+  }
+
+  // ── Search ──────────────────────────────────────
+  function debouncePatientSearch(val) {
+    clearTimeout(Patients.searchTimer);
+    Patients.searchTimer = setTimeout(() => {
+      Patients.searchQuery = val;
+      Patients.page = 1;
+      fetchPatients();
+    }, 350);
+  }
+
+  // ── Modal open ──────────────────────────────────
+  async function openPatientModal(patientId = null) {
+    const lang    = App.clinic.language || 'ar';
+    const modal   = document.getElementById('patient-modal');
+    const title   = document.getElementById('patient-modal-title');
+    const delBtn  = document.getElementById('pt-delete-btn');
+    const errEl   = document.getElementById('patient-form-error');
+
+    // Reset form
+    document.getElementById('pt-name').value    = '';
+    document.getElementById('pt-phone').value   = '';
+    document.getElementById('pt-dob').value     = '';
+    document.getElementById('pt-gender').value  = '';
+    document.getElementById('pt-address').value = '';
+    document.getElementById('pt-notes').value   = '';
+    errEl.classList.add('hidden');
+    Patients.editingId = null;
+    delBtn.style.display = 'none';
+
+    if (patientId) {
+      // Edit mode — load patient
+      delBtn.style.display = '';
+      title.innerHTML = `<span class="ar">تعديل بيانات المريض</span><span class="en" style="display:none">Edit Patient</span>`;
+
+      const { data: p, error } = await sb.from('patients')
+        .select('*').eq('id', patientId).single();
+
+      if (error || !p) {
+        showToast(lang === 'ar' ? 'تعذر تحميل بيانات المريض' : 'Could not load patient', 'error');
+        return;
+      }
+
+      Patients.editingId                          = p.id;
+      document.getElementById('pt-name').value    = p.full_name    || '';
+      document.getElementById('pt-phone').value   = p.phone        || '';
+      document.getElementById('pt-dob').value     = p.dob          || '';
+      document.getElementById('pt-gender').value  = p.gender       || '';
+      document.getElementById('pt-address').value = p.address      || '';
+      document.getElementById('pt-notes').value   = p.notes        || '';
+    } else {
+      title.innerHTML = `<span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>`;
+    }
+
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+    setTimeout(() => document.getElementById('pt-name').focus(), 100);
+  }
+
+  function closePatientModal(e) {
+    if (e && e.target !== document.getElementById('patient-modal')) return;
+    document.getElementById('patient-modal').classList.add('hidden');
+    Patients.editingId = null;
+  }
+
+  // ── Save ────────────────────────────────────────
+  async function savePatient() {
+    const lang   = App.clinic.language || 'ar';
+    const btn    = document.getElementById('pt-save-btn');
+    const errEl  = document.getElementById('patient-form-error');
+    const name   = document.getElementById('pt-name').value.trim();
+
+    errEl.classList.add('hidden');
+
+    if (!name) {
+      errEl.textContent = lang === 'ar' ? 'الاسم مطلوب' : 'Name is required';
+      errEl.classList.remove('hidden');
+      document.getElementById('pt-name').focus();
+      return;
+    }
+
+    const payload = {
+      clinic_id:  App.clinic.id,
+      full_name:  name,
+      phone:      document.getElementById('pt-phone').value.trim()   || null,
+      dob:        document.getElementById('pt-dob').value            || null,
+      gender:     document.getElementById('pt-gender').value         || null,
+      address:    document.getElementById('pt-address').value.trim() || null,
+      notes:      document.getElementById('pt-notes').value.trim()   || null,
+      created_by: App.clinicUser.id,
+    };
+
+    setButtonLoading(btn, true);
+
+    let error;
+
+    if (Patients.editingId) {
+      // Update
+      const res = await sb.from('patients').update(payload).eq('id', Patients.editingId);
+      error = res.error;
+      if (!error) {
+        logAudit('patient_update', 'patients', Patients.editingId);
+        showToast(lang === 'ar' ? 'تم تحديث بيانات المريض' : 'Patient updated', 'success');
+      }
+    } else {
+      // Insert
+      const res = await sb.from('patients').insert(payload);
+      error = res.error;
+      if (!error) {
+        logAudit('patient_create', 'patients', null);
+        showToast(lang === 'ar' ? 'تمت إضافة المريض بنجاح' : 'Patient added', 'success');
+      }
+    }
+
+    setButtonLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = lang === 'ar' ? 'حدث خطأ. حاول مجدداً.' : 'An error occurred. Try again.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('patient-modal').classList.add('hidden');
+    await loadPatients();
+  }
+
+  // ── Delete ──────────────────────────────────────
+  function deletePatient() {
+    const lang = App.clinic.language || 'ar';
+    const p    = Patients.list.find(x => x.id === Patients.editingId);
+    const name = p?.full_name || '';
+
+    const msg = lang === 'ar'
+      ? `هل أنت متأكد من حذف المريض "${name}"؟ سيتم حذف جميع وصفاته وسجلاته نهائياً.`
+      : `Delete patient "${name}"? All prescriptions and records will be permanently deleted.`;
+
+    document.getElementById('pt-confirm-msg').textContent = msg;
+    document.getElementById('pt-confirm-modal').classList.remove('hidden');
+
+    const yesBtn = document.getElementById('pt-confirm-yes-btn');
+    yesBtn.onclick = async () => {
+      const { error } = await sb.from('patients').delete().eq('id', Patients.editingId);
+      if (error) {
+        showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error');
+      } else {
+        logAudit('patient_delete', 'patients', Patients.editingId);
+        showToast(lang === 'ar' ? 'تم حذف المريض' : 'Patient deleted', 'success');
+        closePtConfirm();
+        document.getElementById('patient-modal').classList.add('hidden');
+        await loadPatients();
+      }
+    };
+
+    lucide.createIcons();
+  }
+
+  function closePtConfirm(e) {
+    if (e && e.target !== document.getElementById('pt-confirm-modal')) return;
+    document.getElementById('pt-confirm-modal').classList.add('hidden');
+  }
+
+  // ── Helpers ─────────────────────────────────────
+  function calcAge(dob) {
+    if (!dob) return '—';
+    const diff = Date.now() - new Date(dob).getTime();
+    const age  = Math.floor(diff / (365.25 * 24 * 3600 * 1000));
+    const lang = App.clinic?.language || 'ar';
+    return lang === 'ar' ? `${age} سنة` : `${age} y`;
+  }
+
+
   document.addEventListener('DOMContentLoaded', init);
   </script>
 
