@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نور — إدارة العيادة البصرية</title>
+  <meta name="description" content="Noor — Optical Clinic Management System" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0a0f1e" />
+  <meta name="mobile-web-app-capable" content="true" />
+  <meta name="apple-mobile-web-app-capable" content="true" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════
+       CSS VARIABLES — DARK THEME (default)
+    ═══════════════════════════════════════ */
+    :root {
+      --bg-base:       #070b14;
+      --bg-surface:    #0d1424;
+      --bg-elevated:   #131d30;
+      --bg-hover:      #1a2640;
+      --bg-input:      #0f1a2e;
+
+      --border:        #1e2e47;
+      --border-focus:  #2e7fff;
+
+      --text-primary:  #e8edf5;
+      --text-secondary:#8a9bb5;
+      --text-muted:    #4a5a72;
+      --text-inverse:  #070b14;
+
+      --accent:        #2e7fff;
+      --accent-dim:    #1a4a99;
+      --accent-glow:   rgba(46,127,255,0.15);
+
+      --success:       #1db87e;
+      --warning:       #f0a500;
+      --danger:        #e03c50;
+      --info:          #2e7fff;
+
+      --sidebar-width: 240px;
+      --topbar-height: 60px;
+
+      --radius-sm:  6px;
+      --radius-md:  10px;
+      --radius-lg:  16px;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
+      --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
+      --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
+
+      --font-main:  'IBM Plex Sans Arabic', sans-serif;
+      --font-mono:  'IBM Plex Mono', monospace;
+
+      --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* LIGHT THEME */
+    [data-theme="light"] {
+      --bg-base:       #f0f4fa;
+      --bg-surface:    #ffffff;
+      --bg-elevated:   #f8faff;
+      --bg-hover:      #eef2fb;
+      --bg-input:      #f4f7fd;
+
+      --border:        #dde4f0;
+      --border-focus:  #2e7fff;
+
+      --text-primary:  #0d1424;
+      --text-secondary:#4a5e7a;
+      --text-muted:    #8a9bb5;
+      --text-inverse:  #ffffff;
+
+      --accent:        #1a65e8;
+      --accent-dim:    #d0e2ff;
+      --accent-glow:   rgba(26,101,232,0.1);
+
+      --success:       #0e9a64;
+      --warning:       #c47f00;
+      --danger:        #c02030;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md:  0 4px 16px rgba(0,0,0,0.1);
+      --shadow-lg:  0 8px 32px rgba(0,0,0,0.12);
+    }
+
+    /* ═══════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 15px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* LTR override for English */
+    [dir="ltr"] {
+      font-family: var(--font-main);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    button {
+      font-family: var(--font-main);
+      cursor: pointer;
+      border: none;
+      outline: none;
+    }
+
+    input, select, textarea {
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ═══════════════════════════════════════
+       UTILITY CLASSES
+    ═══════════════════════════════════════ */
+    .hidden   { display: none !important; }
+    .flex     { display: flex; }
+    .flex-col { display: flex; flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-1 { gap: 4px; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .w-full { width: 100%; }
+    .text-sm { font-size: 0.825rem; }
+    .text-xs { font-size: 0.75rem; }
+    .text-muted { color: var(--text-muted); }
+    .text-secondary { color: var(--text-secondary); }
+    .text-danger { color: var(--danger); }
+    .text-success { color: var(--success); }
+    .text-warning { color: var(--warning); }
+    .font-mono { font-family: var(--font-mono); }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ═══════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      width: min(400px, 90vw);
+    }
+
+    .toast {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow-lg);
+      pointer-events: all;
+      animation: toastIn 0.25s ease forwards;
+      font-size: 0.9rem;
+    }
+
+    .toast.success { border-color: var(--success); }
+    .toast.error   { border-color: var(--danger); }
+    .toast.warning { border-color: var(--warning); }
+
+    .toast-icon { flex-shrink: 0; }
+    .toast-icon svg { width: 16px; height: 16px; }
+    .toast.success .toast-icon { color: var(--success); }
+    .toast.error   .toast-icon { color: var(--danger); }
+    .toast.warning .toast-icon { color: var(--warning); }
+    .toast.info    .toast-icon { color: var(--accent); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(12px); }
+    }
+
+    /* ═══════════════════════════════════════
+       SPINNER
+    ═══════════════════════════════════════ */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .spinner.lg { width: 36px; height: 36px; border-width: 3px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════
+       FULL-PAGE LOADER
+    ═══════════════════════════════════════ */
+    #app-loader {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-base);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10000;
+      transition: opacity 0.3s ease;
+    }
+
+    #app-loader .loader-logo {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -1px;
+    }
+
+    #app-loader .loader-logo span {
+      color: var(--text-secondary);
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════
+       AUTH SCREEN
+    ═══════════════════════════════════════ */
+    #auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg-base);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle grid background */
+    #auth-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* glow blob */
+    #auth-screen::after {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+      box-shadow: var(--shadow-lg);
+      animation: cardUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes cardUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .auth-logo-icon {
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .auth-logo-icon svg { width: 22px; height: 22px; }
+
+    .auth-logo-text {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    .auth-logo-text .ar { display: block; }
+    .auth-logo-text .en { display: none; font-size: 1.2rem; }
+
+    [dir="ltr"] .auth-logo-text .ar { display: none; }
+    [dir="ltr"] .auth-logo-text .en { display: block; }
+
+    .auth-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 32px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: var(--bg-base);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      border-radius: calc(var(--radius-sm) - 2px);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: var(--transition);
+      font-family: var(--font-main);
+    }
+
+    .auth-tab.active {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Form elements */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.825rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .form-control:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .form-control::placeholder { color: var(--text-muted); }
+
+    .form-control.error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(224,60,80,0.1);
+    }
+
+    .form-error {
+      font-size: 0.775rem;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+
+    /* Input with icon */
+    .input-group {
+      position: relative;
+    }
+
+    .input-group .form-control {
+      padding-inline-end: 40px;
+    }
+
+    .input-group-icon {
+      position: absolute;
+      inset-inline-end: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+    }
+
+    .input-group-icon svg { width: 16px; height: 16px; }
+
+    .input-group .toggle-password {
+      position: absolute;
+      inset-inline-end: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      color: var(--text-muted);
+      padding: 2px;
+      display: flex;
+      pointer-events: all;
+      cursor: pointer;
+    }
+
+    .input-group .toggle-password svg { width: 16px; height: 16px; }
+    .input-group .toggle-password:hover { color: var(--text-secondary); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: var(--font-main);
+      transition: var(--transition);
+      cursor: pointer;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-primary:active { filter: brightness(0.95); }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover { background: var(--bg-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: transparent;
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+
+    .btn-danger:hover { filter: brightness(1.1); }
+
+    .btn-sm { padding: 6px 12px; font-size: 0.825rem; }
+    .btn-lg { padding: 13px 24px; font-size: 1rem; }
+    .btn-full { width: 100%; }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* License notice in auth */
+    .license-notice {
+      background: rgba(240,165,0,0.08);
+      border: 1px solid rgba(240,165,0,0.25);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.825rem;
+      color: var(--warning);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .license-notice svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* Auth divider */
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ═══════════════════════════════════════
+       EXPIRED / GRACE SCREEN
+    ═══════════════════════════════════════ */
+    #license-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .license-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .license-card .icon-wrap {
+      width: 60px; height: 60px;
+      background: rgba(224,60,80,0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      color: var(--danger);
+    }
+
+    .license-card .icon-wrap svg { width: 28px; height: 28px; }
+    .license-card h2 { font-size: 1.3rem; margin-bottom: 8px; }
+    .license-card p  { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 24px; }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+      text-align: start;
+    }
+
+    .pricing-item {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+    }
+
+    .pricing-item .plan-name {
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .pricing-item .plan-price {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    /* ═══════════════════════════════════════
+       MAIN APP LAYOUT
+    ═══════════════════════════════════════ */
+    #app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-surface);
+      border-inline-end: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      inset-block: 0;
+      inset-inline-start: 0;
+      z-index: 200;
+      transition: transform var(--transition);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-logo-icon {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-icon svg { width: 18px; height: 18px; }
+
+    .sidebar-clinic-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Nav sections */
+    .nav-section {
+      padding: 12px 8px 4px;
+    }
+
+    .nav-section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0 8px;
+      margin-bottom: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 400;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 1px;
+      border: none;
+      background: none;
+      width: 100%;
+      font-family: var(--font-main);
+      text-align: inherit;
+    }
+
+    .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-glow);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .nav-item .nav-badge {
+      margin-inline-start: auto;
+      background: var(--danger);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-family: var(--font-mono);
+    }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .user-card:hover { background: var(--bg-hover); }
+
+    .user-avatar {
+      width: 32px; height: 32px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .user-info { overflow: hidden; flex: 1; }
+
+    .user-name {
+      font-size: 0.825rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 0.725rem;
+      color: var(--text-muted);
+      text-transform: capitalize;
+    }
+
+    /* ── TOPBAR ── */
+    #topbar {
+      position: fixed;
+      top: 0;
+      inset-inline-start: var(--sidebar-width);
+      inset-inline-end: 0;
+      height: var(--topbar-height);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .topbar-start {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+
+    #menu-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+    #menu-toggle svg { width: 20px; height: 20px; display: block; }
+
+    .page-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .topbar-end {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .topbar-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      padding: 7px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .topbar-btn svg { width: 18px; height: 18px; }
+
+    .topbar-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .topbar-btn .badge {
+      position: absolute;
+      top: 4px;
+      inset-inline-end: 4px;
+      width: 7px; height: 7px;
+      background: var(--danger);
+      border-radius: 50%;
+      border: 2px solid var(--bg-surface);
+    }
+
+    /* ── MAIN CONTENT ── */
+    #main-content {
+      margin-inline-start: var(--sidebar-width);
+      margin-top: var(--topbar-height);
+      padding: 24px;
+      flex: 1;
+      min-height: calc(100vh - var(--topbar-height));
+    }
+
+    /* ── SIDEBAR OVERLAY (mobile) ── */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 199;
+      backdrop-filter: blur(2px);
+    }
+
+    /* ── PAGE VIEWS ── */
+    .page-view {
+      display: none;
+      animation: fadeIn 0.2s ease forwards;
+    }
+
+    .page-view.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title svg { width: 17px; height: 17px; color: var(--accent); }
+
+    /* ── STAT CARDS ── */
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stat-icon {
+      width: 44px; height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-icon.blue   { background: rgba(46,127,255,0.12); color: var(--accent); }
+    .stat-icon.green  { background: rgba(29,184,126,0.12); color: var(--success); }
+    .stat-icon.orange { background: rgba(240,165,0,0.12);  color: var(--warning); }
+    .stat-icon.red    { background: rgba(224,60,80,0.12);  color: var(--danger); }
+
+    .stat-info { flex: 1; min-width: 0; }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      text-align: inherit;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-hover); }
+
+    tbody td {
+      padding: 11px 14px;
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.725rem;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(29,184,126,0.12); color: var(--success); }
+    .badge-warning { background: rgba(240,165,0,0.12);  color: var(--warning); }
+    .badge-danger  { background: rgba(224,60,80,0.12);  color: var(--danger); }
+    .badge-info    { background: rgba(46,127,255,0.12); color: var(--accent); }
+    .badge-muted   { background: var(--bg-elevated);    color: var(--text-muted); }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(3px);
+      animation: fadeIn 0.15s ease;
+    }
+
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-lg { max-width: 720px; }
+    .modal-sm { max-width: 380px; }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      transition: var(--transition);
+    }
+
+    .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .modal-close svg { width: 18px; height: 18px; }
+
+    .modal-body    { padding: 20px; }
+    .modal-footer  {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      gap: 12px;
+      text-align: center;
+    }
+
+    .empty-state svg { width: 40px; height: 40px; opacity: 0.5; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── GRID LAYOUTS ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* ── MOBILE RESPONSIVE ── */
+    @media (max-width: 768px) {
+      :root { --sidebar-width: 260px; }
+
+      #sidebar {
+        transform: translateX(100%);
+      }
+
+      [dir="ltr"] #sidebar {
+        transform: translateX(-100%);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+      }
+
+      #sidebar-overlay.show { display: block; }
+
+      #topbar {
+        inset-inline-start: 0;
+      }
+
+      #menu-toggle { display: flex; }
+
+      #main-content {
+        margin-inline-start: 0;
+        padding: 16px;
+      }
+
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-card { padding: 28px 20px; }
+    }
+
+    @media (max-width: 480px) {
+      .modal { border-radius: var(--radius-md); }
+      .pricing-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── GRACE PERIOD BANNER ── */
+    #grace-banner {
+      background: rgba(240,165,0,0.08);
+      border-bottom: 1px solid rgba(240,165,0,0.2);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.825rem;
+      color: var(--warning);
+      position: fixed;
+      top: var(--topbar-height);
+      inset-inline-start: var(--sidebar-width);
+      inset-inline-end: 0;
+      z-index: 99;
+    }
+
+    #grace-banner svg { width: 14px; height: 14px; }
+
+    #grace-banner ~ #main-content {
+      margin-top: calc(var(--topbar-height) + 36px);
+    }
+
+    /* ── SELECT ── */
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a9bb5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 12px center;
+      padding-inline-start: 32px;
+    }
+
+    [dir="ltr"] select.form-control {
+      background-position: right 12px center;
+      padding-inline-start: 12px;
+      padding-inline-end: 32px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════
+       TOAST CONTAINER
+  ═══════════════════════════════════ -->
+  <div id="toast-container"></div>
+
+  <!-- ═══════════════════════════════════
+       APP LOADER
+  ═══════════════════════════════════ -->
+  <div id="app-loader">
+    <div class="loader-logo">نور <span>Noor</span></div>
+    <div class="spinner lg"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       AUTH SCREEN
+  ═══════════════════════════════════ -->
+  <div id="auth-screen" class="hidden">
+    <div class="auth-card">
+
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="auth-logo-icon">
+          <i data-lucide="eye"></i>
+        </div>
+        <div class="auth-logo-text">
+          <span class="ar">نور</span>
+          <span class="en">Noor</span>
+        </div>
+      </div>
+      <p class="auth-subtitle" id="auth-subtitle">إدارة العيادة البصرية</p>
+
+      <!-- Tabs -->
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')" id="tab-login">
+          <span class="ar">تسجيل الدخول</span>
+          <span class="en" style="display:none">Sign In</span>
+        </button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')" id="tab-signup">
+          <span class="ar">حساب جديد</span>
+          <span class="en" style="display:none">Sign Up</span>
+        </button>
+      </div>
+
+      <!-- LICENSE NOTICE (shown when license expired) -->
+      <div id="license-notice" class="license-notice hidden">
+        <i data-lucide="alert-triangle"></i>
+        <span id="license-notice-text">انتهت صلاحية الاشتراك</span>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">البريد الإلكتروني</span>
+            <span class="en" style="display:none">Email</span>
+          </label>
+          <div class="input-group">
+            <input
+              type="email"
+              id="login-email"
+              class="form-control"
+              autocomplete="email"
+              required
+            />
+            <span class="input-group-icon"><i data-lucide="mail"></i></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">كلمة المرور</span>
+            <span class="en" style="display:none">Password</span>
+          </label>
+          <div class="input-group">
+            <input
+              type="password"
+              id="login-password"
+              class="form-control"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="toggle-password" onclick="togglePassword('login-password', this)">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <div id="login-error" class="form-error hidden"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+          <span class="ar">دخول</span>
+          <span class="en" style="display:none">Sign In</span>
+        </button>
+      </form>
+
+      <!-- SIGNUP FORM -->
+      <form id="signup-form" class="hidden" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">اسم العيادة</span>
+            <span class="en" style="display:none">Clinic Name</span>
+          </label>
+          <div class="input-group">
+            <input
+              type="text"
+              id="signup-clinic"
+              class="form-control"
+              required
+            />
+            <span class="input-group-icon"><i data-lucide="building-2"></i></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">الاسم الكامل</span>
+            <span class="en" style="display:none">Full Name</span>
+          </label>
+          <input type="text" id="signup-name" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">البريد الإلكتروني</span>
+            <span class="en" style="display:none">Email</span>
+          </label>
+          <div class="input-group">
+            <input
+              type="email"
+              id="signup-email"
+              class="form-control"
+              autocomplete="email"
+              required
+            />
+            <span class="input-group-icon"><i data-lucide="mail"></i></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">كلمة المرور</span>
+            <span class="en" style="display:none">Password</span>
+          </label>
+          <div class="input-group">
+            <input
+              type="password"
+              id="signup-password"
+              class="form-control"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <button type="button" class="toggle-password" onclick="togglePassword('signup-password', this)">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <div id="signup-error" class="form-error hidden"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="ar">اللغة الافتراضية</span>
+            <span class="en" style="display:none">Default Language</span>
+          </label>
+          <select id="signup-language" class="form-control">
+            <option value="ar">العربية</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="signup-btn">
+          <span class="ar">إنشاء حساب مجاني</span>
+          <span class="en" style="display:none">Create Free Account</span>
+        </button>
+
+        <p class="text-xs text-muted" style="text-align:center; margin-top:12px;">
+          <span class="ar">تجربة مجانية 7 أيام — لا حاجة لبطاقة ائتمان</span>
+          <span class="en" style="display:none">7-day free trial — no credit card required</span>
+        </p>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       LICENSE EXPIRED SCREEN
+  ═══════════════════════════════════ -->
+  <div id="license-screen" class="hidden">
+    <div class="license-card">
+      <div class="icon-wrap">
+        <i data-lucide="lock"></i>
+      </div>
+      <h2 id="license-screen-title">انتهى الاشتراك</h2>
+      <p id="license-screen-msg">لتجديد اشتراكك، تواصل مع الدعم الفني</p>
+
+      <div class="pricing-grid">
+        <div class="pricing-item">
+          <div class="plan-name"><span class="ar">شهري</span><span class="en" style="display:none">Monthly</span></div>
+          <div class="plan-price">30,000 IQD</div>
+        </div>
+        <div class="pricing-item">
+          <div class="plan-name"><span class="ar">ربع سنوي</span><span class="en" style="display:none">Quarterly</span></div>
+          <div class="plan-price">75,000 IQD</div>
+        </div>
+        <div class="pricing-item">
+          <div class="plan-name"><span class="ar">سنوي</span><span class="en" style="display:none">Yearly</span></div>
+          <div class="plan-price">270,000 IQD</div>
+        </div>
+        <div class="pricing-item">
+          <div class="plan-name"><span class="ar">مدى الحياة</span><span class="en" style="display:none">Lifetime</span></div>
+          <div class="plan-price">550,000 IQD</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-full" onclick="handleLogout()">
+        <i data-lucide="log-out"></i>
+        <span class="ar">تسجيل خروج</span>
+        <span class="en" style="display:none">Sign Out</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       MAIN APP
+  ═══════════════════════════════════ -->
+  <div id="app" class="hidden">
+
+    <!-- Grace period banner -->
+    <div id="grace-banner" class="hidden">
+      <i data-lucide="alert-triangle"></i>
+      <span id="grace-banner-text"></span>
+    </div>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- ── SIDEBAR ── -->
+    <nav id="sidebar">
+
+      <div class="sidebar-header">
+        <div class="sidebar-logo-icon">
+          <i data-lucide="eye"></i>
+        </div>
+        <div class="sidebar-clinic-name" id="sidebar-clinic-name">...</div>
+      </div>
+
+      <!-- Main nav -->
+      <div class="nav-section">
+        <div class="nav-section-label">
+          <span class="ar">الرئيسية</span>
+          <span class="en" style="display:none">Main</span>
+        </div>
+        <button class="nav-item active" onclick="navigateTo('dashboard')" data-page="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span class="ar">لوحة التحكم</span>
+          <span class="en" style="display:none">Dashboard</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('patients')" data-page="patients">
+          <i data-lucide="users"></i>
+          <span class="ar">المرضى</span>
+          <span class="en" style="display:none">Patients</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('followup')" data-page="followup">
+          <i data-lucide="calendar-check"></i>
+          <span class="ar">المتابعة</span>
+          <span class="en" style="display:none">Follow-Up</span>
+          <span class="nav-badge hidden" id="followup-badge">0</span>
+        </button>
+      </div>
+
+      <!-- Inventory -->
+      <div class="nav-section">
+        <div class="nav-section-label">
+          <span class="ar">المخزون</span>
+          <span class="en" style="display:none">Inventory</span>
+        </div>
+        <button class="nav-item" onclick="navigateTo('lenses')" data-page="lenses">
+          <i data-lucide="circle-dot"></i>
+          <span class="ar">العدسات</span>
+          <span class="en" style="display:none">Lenses</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('frames')" data-page="frames">
+          <i data-lucide="glasses"></i>
+          <span class="ar">الإطارات</span>
+          <span class="en" style="display:none">Frames</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('restock')" data-page="restock">
+          <i data-lucide="package-open"></i>
+          <span class="ar">تنبيهات الطلب</span>
+          <span class="en" style="display:none">Restock Alerts</span>
+          <span class="nav-badge hidden" id="restock-badge">0</span>
+        </button>
+      </div>
+
+      <!-- Finance -->
+      <div class="nav-section">
+        <div class="nav-section-label">
+          <span class="ar">المالية</span>
+          <span class="en" style="display:none">Finance</span>
+        </div>
+        <button class="nav-item" onclick="navigateTo('ledger')" data-page="ledger">
+          <i data-lucide="receipt"></i>
+          <span class="ar">الصندوق اليومي</span>
+          <span class="en" style="display:none">Daily Ledger</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('debtors')" data-page="debtors">
+          <i data-lucide="wallet"></i>
+          <span class="ar">المديونيات</span>
+          <span class="en" style="display:none">Debtors</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('reports')" data-page="reports">
+          <i data-lucide="bar-chart-2"></i>
+          <span class="ar">التقارير</span>
+          <span class="en" style="display:none">Reports</span>
+        </button>
+      </div>
+
+      <!-- Settings (admin only) -->
+      <div class="nav-section" id="nav-admin-section">
+        <div class="nav-section-label">
+          <span class="ar">الإدارة</span>
+          <span class="en" style="display:none">Admin</span>
+        </div>
+        <button class="nav-item" onclick="navigateTo('settings')" data-page="settings">
+          <i data-lucide="settings"></i>
+          <span class="ar">الإعدادات</span>
+          <span class="en" style="display:none">Settings</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('audit')" data-page="audit">
+          <i data-lucide="shield-check"></i>
+          <span class="ar">سجل العمليات</span>
+          <span class="en" style="display:none">Audit Log</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('backup')" data-page="backup">
+          <i data-lucide="database"></i>
+          <span class="ar">النسخ الاحتياطي</span>
+          <span class="en" style="display:none">Backup</span>
+        </button>
+      </div>
+
+      <!-- Sidebar footer — user -->
+      <div class="sidebar-footer">
+        <div class="user-card" onclick="navigateTo('settings')">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <div class="user-info">
+            <div class="user-name" id="user-name-display">...</div>
+            <div class="user-role" id="user-role-display">...</div>
+          </div>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;color:var(--text-muted);flex-shrink:0"></i>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- ── TOPBAR ── -->
+    <header id="topbar">
+      <div class="topbar-start">
+        <button id="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="page-title" id="page-title">
+          <span class="ar">لوحة التحكم</span>
+          <span class="en" style="display:none">Dashboard</span>
+        </span>
+      </div>
+      <div class="topbar-end">
+        <!-- Restock alert -->
+        <button class="topbar-btn" onclick="navigateTo('restock')" id="restock-alert-btn" title="Restock Alerts" style="display:none">
+          <i data-lucide="package-open"></i>
+          <span class="badge"></span>
+        </button>
+        <!-- Theme toggle -->
+        <button class="topbar-btn" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Theme">
+          <i data-lucide="moon" id="theme-icon"></i>
+        </button>
+        <!-- Logout -->
+        <button class="topbar-btn" onclick="handleLogout()" title="Logout">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main id="main-content">
+
+      <!-- DASHBOARD placeholder -->
+      <div id="page-dashboard" class="page-view active">
+        <div class="empty-state">
+          <i data-lucide="layout-dashboard"></i>
+          <p>
+            <span class="ar">جاري بناء لوحة التحكم...</span>
+            <span class="en" style="display:none">Dashboard coming soon...</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Placeholder pages (filled in later chunks) -->
+      <div id="page-patients"  class="page-view"><div class="empty-state"><i data-lucide="users"></i><p>Patients</p></div></div>
+      <div id="page-followup"  class="page-view"><div class="empty-state"><i data-lucide="calendar-check"></i><p>Follow-Up</p></div></div>
+      <div id="page-lenses"    class="page-view"><div class="empty-state"><i data-lucide="circle-dot"></i><p>Lenses</p></div></div>
+      <div id="page-frames"    class="page-view"><div class="empty-state"><i data-lucide="glasses"></i><p>Frames</p></div></div>
+      <div id="page-restock"   class="page-view"><div class="empty-state"><i data-lucide="package-open"></i><p>Restock</p></div></div>
+      <div id="page-ledger"    class="page-view"><div class="empty-state"><i data-lucide="receipt"></i><p>Ledger</p></div></div>
+      <div id="page-debtors"   class="page-view"><div class="empty-state"><i data-lucide="wallet"></i><p>Debtors</p></div></div>
+      <div id="page-reports"   class="page-view"><div class="empty-state"><i data-lucide="bar-chart-2"></i><p>Reports</p></div></div>
+      <div id="page-settings"  class="page-view"><div class="empty-state"><i data-lucide="settings"></i><p>Settings</p></div></div>
+      <div id="page-audit"     class="page-view"><div class="empty-state"><i data-lucide="shield-check"></i><p>Audit Log</p></div></div>
+      <div id="page-backup"    class="page-view"><div class="empty-state"><i data-lucide="database"></i><p>Backup</p></div></div>
+
+    </main>
+
+  </div><!-- /#app -->
+
+
+  <!-- ═══════════════════════════════════
+       JAVASCRIPT
+  ═══════════════════════════════════ -->
+  <script>
+  // ─────────────────────────────────────
+  // CONFIG — replace with your real values
+  // ─────────────────────────────────────
+  const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+  // ─────────────────────────────────────
+  // SUPABASE CLIENT
+  // ─────────────────────────────────────
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ─────────────────────────────────────
+  // APP STATE
+  // ─────────────────────────────────────
+  const App = {
+    user:       null,   // Supabase auth user
+    clinicUser: null,   // clinic_users row
+    clinic:     null,   // clinics row
+    license:    null,   // check_license() result
+    currentPage: 'dashboard',
+  };
+
+  // ─────────────────────────────────────
+  // INIT
+  // ─────────────────────────────────────
+  async function init() {
+    // Apply saved theme immediately to avoid flash
+    const savedTheme = localStorage.getItem('noor_theme') || 'dark';
+    applyTheme(savedTheme, false);
+
+    // Apply saved language
+    const savedLang = localStorage.getItem('noor_lang') || 'ar';
+    applyLanguage(savedLang, false);
+
+    lucide.createIcons();
+
+    // Check existing session
+    const { data: { session } } = await sb.auth.getSession();
+
+    if (session) {
+      await loadAppForUser(session.user);
+    } else {
+      showScreen('auth');
+    }
+
+    // Listen for auth changes
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await loadAppForUser(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        App.user = null; App.clinicUser = null; App.clinic = null;
+        showScreen('auth');
+      }
+    });
+  }
+
+  // ─────────────────────────────────────
+  // LOAD APP AFTER AUTH
+  // ─────────────────────────────────────
+  async function loadAppForUser(user) {
+    showLoader();
+    App.user = user;
+
+    try {
+      // 1. Load clinic_user record
+      const { data: cu, error: cuErr } = await sb
+        .from('clinic_users')
+        .select('*, clinics(*)')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (cuErr || !cu) {
+        // Check if superadmin
+        const { data: sa } = await sb
+          .from('superadmins')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (sa) {
+          // Superadmin — redirect to superadmin panel (future chunk)
+          window.location.href = '/superadmin';
+          return;
+        }
+
+        showToast('لا يوجد حساب مرتبط بهذا البريد الإلكتروني', 'error');
+        await sb.auth.signOut();
+        showScreen('auth');
+        return;
+      }
+
+      App.clinicUser = cu;
+      App.clinic     = cu.clinics;
+
+      // 2. Check license
+      const { data: licData, error: licErr } = await sb
+        .rpc('check_license', { p_clinic_id: App.clinic.id });
+
+      App.license = licData;
+
+      if (!licData?.allowed) {
+        showScreen('license');
+        return;
+      }
+
+      // 3. Apply clinic language + theme
+      applyLanguage(App.clinic.language || 'ar');
+      applyTheme(App.clinic.theme || 'dark');
+
+      // 4. Update UI
+      document.getElementById('sidebar-clinic-name').textContent = App.clinic.name;
+      document.getElementById('user-name-display').textContent   = App.clinicUser.full_name;
+      document.getElementById('user-role-display').textContent   = translateRole(App.clinicUser.role);
+      document.getElementById('user-avatar').textContent         = App.clinicUser.full_name.charAt(0).toUpperCase();
+
+      // 5. Role-based nav
+      if (App.clinicUser.role === 'receptionist') {
+        document.getElementById('nav-admin-section').classList.add('hidden');
+      }
+
+      // 6. Grace period banner
+      if (licData.status === 'grace') {
+        const graceDate = new Date(licData.grace_ends_at).toLocaleDateString(
+          App.clinic.language === 'ar' ? 'ar-IQ' : 'en-US'
+        );
+        const banner = document.getElementById('grace-banner');
+        document.getElementById('grace-banner-text').textContent =
+          App.clinic.language === 'ar'
+            ? `فترة السماح — ينتهي الوصول في ${graceDate}`
+            : `Grace period — access ends ${graceDate}`;
+        banner.classList.remove('hidden');
+      }
+
+      // 7. Log login to audit
+      logAudit('login');
+
+      showScreen('app');
+
+    } catch (err) {
+      console.error('loadAppForUser error:', err);
+      showToast('حدث خطأ أثناء التحميل', 'error');
+      showScreen('auth');
+    }
+  }
+
+  // ─────────────────────────────────────
+  // AUTH HANDLERS
+  // ─────────────────────────────────────
+  async function handleLogin(e) {
+    e.preventDefault();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('login-error');
+
+    errEl.classList.add('hidden');
+    setButtonLoading(btn, true);
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+
+    setButtonLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = translateAuthError(error.message);
+      errEl.classList.remove('hidden');
+    }
+    // On success, onAuthStateChange handles the rest
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    const clinic   = document.getElementById('signup-clinic').value.trim();
+    const name     = document.getElementById('signup-name').value.trim();
+    const email    = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const language = document.getElementById('signup-language').value;
+    const btn      = document.getElementById('signup-btn');
+    const errEl    = document.getElementById('signup-error');
+
+    errEl.classList.add('hidden');
+    setButtonLoading(btn, true);
+
+    // 1. Create auth user
+    const { data, error } = await sb.auth.signUp({ email, password });
+
+    if (error) {
+      errEl.textContent = translateAuthError(error.message);
+      errEl.classList.remove('hidden');
+      setButtonLoading(btn, false);
+      return;
+    }
+
+    if (data.user) {
+      // 2. Create clinic via DB function
+      const { error: clinicErr } = await sb.rpc('create_clinic_on_signup', {
+        p_user_id:     data.user.id,
+        p_clinic_name: clinic,
+        p_full_name:   name,
+        p_language:    language,
+      });
+
+      if (clinicErr) {
+        errEl.textContent = 'فشل إنشاء العيادة. حاول مرة أخرى.';
+        errEl.classList.remove('hidden');
+        setButtonLoading(btn, false);
+        return;
+      }
+
+      showToast(
+        language === 'ar' ? 'تم إنشاء الحساب — مرحباً بك!' : 'Account created — welcome!',
+        'success'
+      );
+    }
+
+    setButtonLoading(btn, false);
+    // onAuthStateChange will handle redirect
+  }
+
+  async function handleLogout() {
+    logAudit('logout');
+    await sb.auth.signOut();
+    localStorage.removeItem('noor_theme');
+    localStorage.removeItem('noor_lang');
+  }
+
+  // ─────────────────────────────────────
+  // NAVIGATION
+  // ─────────────────────────────────────
+  const PAGE_TITLES = {
+    ar: {
+      dashboard: 'لوحة التحكم',
+      patients:  'المرضى',
+      followup:  'قائمة المتابعة',
+      lenses:    'مخزون العدسات',
+      frames:    'مخزون الإطارات',
+      restock:   'تنبيهات الطلب',
+      ledger:    'الصندوق اليومي',
+      debtors:   'المديونيات',
+      reports:   'التقارير',
+      settings:  'الإعدادات',
+      audit:     'سجل العمليات',
+      backup:    'النسخ الاحتياطي',
+    },
+    en: {
+      dashboard: 'Dashboard',
+      patients:  'Patients',
+      followup:  'Follow-Up',
+      lenses:    'Lens Inventory',
+      frames:    'Frame Inventory',
+      restock:   'Restock Alerts',
+      ledger:    'Daily Ledger',
+      debtors:   'Debtors',
+      reports:   'Reports',
+      settings:  'Settings',
+      audit:     'Audit Log',
+      backup:    'Backup & Restore',
+    }
+  };
+
+  function navigateTo(page) {
+    // Deactivate all
+    document.querySelectorAll('.page-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+    // Activate target
+    const view = document.getElementById('page-' + page);
+    if (view) view.classList.add('active');
+
+    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navItem) navItem.classList.add('active');
+
+    // Update title
+    const lang = App.clinic?.language || 'ar';
+    document.getElementById('page-title').textContent =
+      (PAGE_TITLES[lang] || PAGE_TITLES.ar)[page] || page;
+
+    App.currentPage = page;
+    closeSidebar();
+  }
+
+  // ─────────────────────────────────────
+  // SIDEBAR (mobile)
+  // ─────────────────────────────────────
+  function toggleSidebar() {
+    const sidebar  = document.getElementById('sidebar');
+    const overlay  = document.getElementById('sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  }
+
+  // ─────────────────────────────────────
+  // THEME
+  // ─────────────────────────────────────
+  function applyTheme(theme, save = true) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = document.getElementById('theme-icon');
+    if (icon) {
+      icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+      lucide.createIcons();
+    }
+    if (save) localStorage.setItem('noor_theme', theme);
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next    = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    // Persist to DB if logged in
+    if (App.clinic) {
+      sb.from('clinics').update({ theme: next }).eq('id', App.clinic.id);
+    }
+  }
+
+  // ─────────────────────────────────────
+  // LANGUAGE
+  // ─────────────────────────────────────
+  function applyLanguage(lang, save = true) {
+    const isAr = lang === 'ar';
+    document.documentElement.setAttribute('lang', lang);
+    document.documentElement.setAttribute('dir', isAr ? 'rtl' : 'ltr');
+
+    // Toggle .ar / .en spans
+    document.querySelectorAll('.ar').forEach(el => el.style.display = isAr ? '' : 'none');
+    document.querySelectorAll('.en').forEach(el => el.style.display = isAr ? 'none' : '');
+
+    lucide.createIcons();
+    if (save) localStorage.setItem('noor_lang', lang);
+  }
+
+  // ─────────────────────────────────────
+  // SCREEN SWITCHER
+  // ─────────────────────────────────────
+  function showScreen(name) {
+    hideLoader();
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('license-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+
+    if (name === 'auth')    document.getElementById('auth-screen').classList.remove('hidden');
+    if (name === 'license') document.getElementById('license-screen').classList.remove('hidden');
+    if (name === 'app')     document.getElementById('app').classList.remove('hidden');
+
+    lucide.createIcons();
+  }
+
+  function showLoader() { document.getElementById('app-loader').style.display = 'flex'; }
+  function hideLoader() { document.getElementById('app-loader').style.display = 'none'; }
+
+  // ─────────────────────────────────────
+  // AUTH TAB SWITCH
+  // ─────────────────────────────────────
+  function switchAuthTab(tab) {
+    const loginForm  = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const tabLogin   = document.getElementById('tab-login');
+    const tabSignup  = document.getElementById('tab-signup');
+
+    if (tab === 'login') {
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+      tabLogin.classList.add('active');
+      tabSignup.classList.remove('active');
+    } else {
+      loginForm.classList.add('hidden');
+      signupForm.classList.remove('hidden');
+      tabLogin.classList.remove('active');
+      tabSignup.classList.add('active');
+    }
+  }
+
+  // ─────────────────────────────────────
+  // PASSWORD TOGGLE
+  // ─────────────────────────────────────
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    btn.innerHTML = isPassword
+      ? '<i data-lucide="eye-off"></i>'
+      : '<i data-lucide="eye"></i>';
+    lucide.createIcons();
+  }
+
+  // ─────────────────────────────────────
+  // TOAST
+  // ─────────────────────────────────────
+  function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    const iconMap   = { success: 'check-circle', error: 'x-circle', warning: 'alert-triangle', info: 'info' };
+    const toast     = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+      <span class="toast-icon"><i data-lucide="${iconMap[type] || 'info'}"></i></span>
+      <span>${message}</span>
+    `;
+    container.appendChild(toast);
+    lucide.createIcons();
+    setTimeout(() => {
+      toast.style.animation = 'toastOut 0.25s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ─────────────────────────────────────
+  // BUTTON LOADING STATE
+  // ─────────────────────────────────────
+  function setButtonLoading(btn, loading) {
+    if (loading) {
+      btn._originalHTML = btn.innerHTML;
+      btn.innerHTML = '<div class="spinner"></div>';
+      btn.disabled  = true;
+    } else {
+      btn.innerHTML = btn._originalHTML || btn.innerHTML;
+      btn.disabled  = false;
+      lucide.createIcons();
+    }
+  }
+
+  // ─────────────────────────────────────
+  // AUDIT LOG (fire-and-forget)
+  // ─────────────────────────────────────
+  async function logAudit(action, tableName = null, recordId = null, oldData = null, newData = null) {
+    if (!App.clinicUser) return;
+    try {
+      await sb.from('audit_logs').insert({
+        clinic_id:  App.clinic?.id,
+        user_id:    App.user?.id,
+        action,
+        table_name: tableName,
+        record_id:  recordId,
+        old_data:   oldData,
+        new_data:   newData,
+      });
+    } catch (_) { /* non-critical */ }
+  }
+
+  // ─────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────
+  function translateRole(role) {
+    const lang = App.clinic?.language || 'ar';
+    const map  = {
+      ar: { admin: 'مدير', doctor: 'طبيب', receptionist: 'موظف استقبال' },
+      en: { admin: 'Admin', doctor: 'Doctor', receptionist: 'Receptionist' },
+    };
+    return (map[lang] || map.ar)[role] || role;
+  }
+
+  function translateAuthError(msg) {
+    const lang = document.documentElement.getAttribute('lang') || 'ar';
+    if (lang === 'en') return msg;
+    if (msg.includes('Invalid login'))         return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+    if (msg.includes('Email not confirmed'))   return 'يرجى تأكيد البريد الإلكتروني أولاً';
+    if (msg.includes('already registered'))    return 'هذا البريد الإلكتروني مسجل مسبقاً';
+    if (msg.includes('Password should be'))    return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+    if (msg.includes('rate limit'))            return 'محاولات كثيرة — انتظر قليلاً';
+    return 'حدث خطأ. حاول مرة أخرى.';
+  }
+
+  function formatCurrency(amount) {
+    const num = Number(amount || 0);
+    return num.toLocaleString('ar-IQ') + ' IQD';
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const lang = App.clinic?.language || 'ar';
+    return new Date(dateStr).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
+  }
+
+  // ─────────────────────────────────────
+  // START
+  // ─────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+</body>
+</html>
