@@ -1759,7 +1759,7 @@
         </button>
         <button class="nav-item" onclick="navigateTo('patients')" data-page="patients">
           <i data-lucide="users"></i>
-          <span class="ar">المرضى</span>
+          <span class="ar">المراجعين</span>
           <span class="en" style="display:none">Patients</span>
         </button>
         <button class="nav-item" onclick="navigateTo('followup')" data-page="followup">
@@ -1913,7 +1913,7 @@
             <div class="stat-info">
               <div class="stat-value" id="stat-today-patients"><div class="spinner"></div></div>
               <div class="stat-label">
-                <span class="ar">مرضى اليوم</span>
+                <span class="ar">مراجعو اليوم</span>
                 <span class="en" style="display:none">Today's Patients</span>
               </div>
             </div>
@@ -1961,7 +1961,7 @@
             <div class="card-header">
               <div class="card-title">
                 <i data-lucide="users"></i>
-                <span class="ar">آخر المرضى</span>
+                <span class="ar">آخر المراجعين</span>
                 <span class="en" style="display:none">Recent Patients</span>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="navigateTo('patients')">
@@ -2398,7 +2398,7 @@
   const PAGE_TITLES = {
     ar: {
       dashboard: 'لوحة التحكم',
-      patients:  'المرضى',
+      patients:  'المراجعين',
       followup:  'قائمة المتابعة',
       lenses:    'مخزون العدسات',
       frames:    'مخزون الإطارات',
@@ -2800,7 +2800,7 @@
       rpContainer.innerHTML = `
         <div class="empty-state" style="padding:30px">
           <i data-lucide="users"></i>
-          <p>${lang === 'ar' ? 'لا يوجد مرضى بعد' : 'No patients yet'}</p>
+          <p>${lang === 'ar' ? 'لا يوجد مراجعون بعد' : 'No patients yet'}</p>
         </div>`;
     }
 
@@ -2892,7 +2892,7 @@
 
     msContainer.innerHTML = `
       <div class="month-row">
-        <span class="month-row-label">${lang === 'ar' ? 'مرضى الشهر' : 'Month Patients'}</span>
+        <span class="month-row-label">${lang === 'ar' ? 'مراجعو الشهر' : 'Month Patients'}</span>
         <span class="month-row-value">${monthPatients ?? 0}</span>
       </div>
       <div class="month-row">
@@ -2992,7 +2992,7 @@
     if (!Patients.list.length) {
       const msg = Patients.searchQuery
         ? (lang === 'ar' ? 'لا توجد نتائج' : 'No results found')
-        : (lang === 'ar' ? 'لا يوجد مرضى بعد — أضف أول مريض' : 'No patients yet — add your first patient');
+        : (lang === 'ar' ? 'لا يوجد مراجعون بعد — أضف أول مراجع' : 'No patients yet — add your first patient');
       tbody.innerHTML = `
         <tr><td colspan="6">
           <div class="empty-state" style="padding:48px 20px">
