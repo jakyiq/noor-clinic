@@ -1206,6 +1206,176 @@
       padding-inline-end: 32px;
     }
 
+    /* ═══════════════════════════════════════
+       DASHBOARD
+    ═══════════════════════════════════════ */
+    .dash-welcome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .dash-welcome-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .dash-welcome-sub {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+    }
+
+    .dash-stats {
+      margin-bottom: 20px;
+    }
+
+    /* Two-column layout */
+    .dash-two-col {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .dash-two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Recent patients list */
+    .recent-patient-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .recent-patient-item:last-child { border-bottom: none; }
+    .recent-patient-item:hover { opacity: 0.8; }
+
+    .patient-avatar {
+      width: 36px; height: 36px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .patient-item-info { flex: 1; min-width: 0; }
+
+    .patient-item-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .patient-item-meta {
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* Follow-up mini list */
+    .followup-mini-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .followup-mini-item:last-child { border-bottom: none; }
+
+    .followup-mini-item svg {
+      width: 14px; height: 14px;
+      color: var(--warning);
+      flex-shrink: 0;
+    }
+
+    /* Month summary rows */
+    .month-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    .month-row:last-child { border-bottom: none; }
+
+    .month-row-label { color: var(--text-secondary); }
+
+    .month-row-value {
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+
+    .month-row-value.green { color: var(--success); }
+    .month-row-value.orange { color: var(--warning); }
+
+    /* Mini bar for revenue bar chart */
+    .mini-bar-wrap {
+      margin-top: 12px;
+    }
+
+    .mini-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 0.775rem;
+    }
+
+    .mini-bar-label {
+      width: 28px;
+      color: var(--text-muted);
+      text-align: start;
+      flex-shrink: 0;
+    }
+
+    .mini-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-hover);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .mini-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .mini-bar-amt {
+      width: 80px;
+      color: var(--text-secondary);
+      text-align: end;
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+
   </style>
 </head>
 <body>
@@ -1594,16 +1764,142 @@
     <!-- ── MAIN CONTENT ── -->
     <main id="main-content">
 
-      <!-- DASHBOARD placeholder -->
+      <!-- ═══════════════════════════════════
+           DASHBOARD
+      ═══════════════════════════════════ -->
       <div id="page-dashboard" class="page-view active">
-        <div class="empty-state">
-          <i data-lucide="layout-dashboard"></i>
-          <p>
-            <span class="ar">جاري بناء لوحة التحكم...</span>
-            <span class="en" style="display:none">Dashboard coming soon...</span>
-          </p>
+
+        <!-- Welcome bar -->
+        <div class="dash-welcome" id="dash-welcome">
+          <div>
+            <div class="dash-welcome-title" id="dash-greeting">مرحباً</div>
+            <div class="dash-welcome-sub" id="dash-date-display"></div>
+          </div>
+          <div class="dash-welcome-actions">
+            <button class="btn btn-primary btn-sm" onclick="navigateTo('patients')">
+              <i data-lucide="user-plus"></i>
+              <span class="ar">مريض جديد</span>
+              <span class="en" style="display:none">New Patient</span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        <!-- Stat cards -->
+        <div class="grid-4 dash-stats" id="dash-stats">
+          <!-- Today's patients -->
+          <div class="stat-card">
+            <div class="stat-icon blue"><i data-lucide="users"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-today-patients"><div class="spinner"></div></div>
+              <div class="stat-label">
+                <span class="ar">مرضى اليوم</span>
+                <span class="en" style="display:none">Today's Patients</span>
+              </div>
+            </div>
+          </div>
+          <!-- Today's revenue -->
+          <div class="stat-card">
+            <div class="stat-icon green"><i data-lucide="banknote"></i></div>
+            <div class="stat-info">
+              <div class="stat-value font-mono" id="stat-today-revenue"><div class="spinner"></div></div>
+              <div class="stat-label">
+                <span class="ar">إيرادات اليوم</span>
+                <span class="en" style="display:none">Today's Revenue</span>
+              </div>
+            </div>
+          </div>
+          <!-- Pending payments -->
+          <div class="stat-card">
+            <div class="stat-icon orange"><i data-lucide="clock"></i></div>
+            <div class="stat-info">
+              <div class="stat-value font-mono" id="stat-pending"><div class="spinner"></div></div>
+              <div class="stat-label">
+                <span class="ar">مبالغ معلقة</span>
+                <span class="en" style="display:none">Pending Payments</span>
+              </div>
+            </div>
+          </div>
+          <!-- Low stock -->
+          <div class="stat-card" id="stat-card-stock" style="cursor:pointer" onclick="navigateTo('restock')">
+            <div class="stat-icon red"><i data-lucide="package-open"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-low-stock"><div class="spinner"></div></div>
+              <div class="stat-label">
+                <span class="ar">مخزون منخفض</span>
+                <span class="en" style="display:none">Low Stock Items</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-column: recent patients + quick stats -->
+        <div class="dash-two-col">
+
+          <!-- Recent patients -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="users"></i>
+                <span class="ar">آخر المرضى</span>
+                <span class="en" style="display:none">Recent Patients</span>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="navigateTo('patients')">
+                <span class="ar">عرض الكل</span>
+                <span class="en" style="display:none">View All</span>
+                <i data-lucide="arrow-left" class="ar"></i>
+                <i data-lucide="arrow-right" class="en" style="display:none"></i>
+              </button>
+            </div>
+            <div id="dash-recent-patients">
+              <div class="empty-state" style="padding:30px">
+                <div class="spinner lg"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <div class="flex-col gap-4">
+
+            <!-- Follow-up due -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="calendar-check"></i>
+                  <span class="ar">متابعة اليوم</span>
+                  <span class="en" style="display:none">Follow-Up Today</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="navigateTo('followup')">
+                  <span class="ar">عرض الكل</span>
+                  <span class="en" style="display:none">View All</span>
+                </button>
+              </div>
+              <div id="dash-followup-list">
+                <div class="empty-state" style="padding:24px">
+                  <div class="spinner"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Monthly summary mini-chart -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="trending-up"></i>
+                  <span class="ar">ملخص الشهر</span>
+                  <span class="en" style="display:none">Month Summary</span>
+                </div>
+              </div>
+              <div id="dash-month-summary">
+                <div class="empty-state" style="padding:24px">
+                  <div class="spinner"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /page-dashboard -->
 
       <!-- Placeholder pages (filled in later chunks) -->
       <div id="page-patients"  class="page-view"><div class="empty-state"><i data-lucide="users"></i><p>Patients</p></div></div>
@@ -1630,8 +1926,8 @@
   // ─────────────────────────────────────
   // CONFIG — replace with your real values
   // ─────────────────────────────────────
-  const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
-  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const SUPABASE_URL      = 'https://ajdfzlbwaslxzxhxdwrm.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqZGZ6bGJ3YXNseHp4aHhkd3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0OTU2NTksImV4cCI6MjA5MzA3MTY1OX0.1qsYu07FQv632WK69TojY3vNotvBPxmJGsI_IdmBytI';
 
   // ─────────────────────────────────────
   // SUPABASE CLIENT
@@ -1766,6 +2062,8 @@
       logAudit('login');
 
       showScreen('app');
+      // Load dashboard data
+      loadDashboard();
 
     } catch (err) {
       console.error('loadAppForUser error:', err);
@@ -1907,6 +2205,11 @@
 
     App.currentPage = page;
     closeSidebar();
+
+    // Refresh dashboard data when visiting it
+    if (page === 'dashboard' && App.clinic) {
+      loadDashboard();
+    }
   }
 
   // ─────────────────────────────────────
@@ -2102,6 +2405,267 @@
     if (!dateStr) return '—';
     const lang = App.clinic?.language || 'ar';
     return new Date(dateStr).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 2 — DASHBOARD
+  // ═══════════════════════════════════════════════════
+
+  async function loadDashboard() {
+    const lang    = App.clinic?.language || 'ar';
+    const cid     = App.clinic?.id;
+    const today   = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const now     = new Date();
+
+    // ── Greeting ──
+    const hour = now.getHours();
+    let greetAr = 'مرحباً', greetEn = 'Hello';
+    if (hour < 12)       { greetAr = 'صباح الخير';  greetEn = 'Good morning'; }
+    else if (hour < 17)  { greetAr = 'مساء الخير';  greetEn = 'Good afternoon'; }
+    else                  { greetAr = 'مساء النور';  greetEn = 'Good evening'; }
+
+    const firstName = (App.clinicUser?.full_name || '').split(' ')[0];
+    document.getElementById('dash-greeting').textContent =
+      lang === 'ar'
+        ? `${greetAr}، ${firstName}`
+        : `${greetEn}, ${firstName}`;
+
+    // Date display
+    document.getElementById('dash-date-display').textContent =
+      now.toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+    // Run all queries in parallel
+    const [
+      todayPatientsRes,
+      todayRevenueRes,
+      pendingRes,
+      lowLensRes,
+      lowFrameRes,
+      recentPatientsRes,
+      followupRes,
+      monthStatsRes,
+    ] = await Promise.allSettled([
+
+      // 1. Today's patients count
+      sb.from('patients')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', cid)
+        .gte('created_at', today + 'T00:00:00')
+        .lte('created_at', today + 'T23:59:59'),
+
+      // 2. Today's paid amount (from payments.amount)
+      sb.from('payments')
+        .select('amount')
+        .eq('clinic_id', cid)
+        .eq('payment_date', today),
+
+      // 3. Total unpaid (from orders remaining column)
+      sb.from('orders')
+        .select('remaining')
+        .eq('clinic_id', cid)
+        .in('payment_status', ['unpaid', 'partial']),
+
+      // 4. Low lens stock
+      sb.from('lenses')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', cid)
+        .lte('quantity', 2),
+
+      // 5. Low frame stock
+      sb.from('frames')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', cid)
+        .lte('quantity', 2),
+
+      // 6. Recent 6 patients
+      sb.from('patients')
+        .select('id, full_name, phone, created_at')
+        .eq('clinic_id', cid)
+        .order('created_at', { ascending: false })
+        .limit(6),
+
+      // 7. Follow-up due today or overdue (from prescriptions via view)
+      sb.from('followup_list')
+        .select('patient_id, patient_name, next_visit_date')
+        .eq('clinic_id', cid)
+        .lte('next_visit_date', today)
+        .order('next_visit_date', { ascending: true })
+        .limit(5),
+
+      // 8. Last 7 days payments
+      sb.from('payments')
+        .select('payment_date, amount')
+        .eq('clinic_id', cid)
+        .gte('payment_date', new Date(now - 6 * 86400000).toISOString().slice(0,10))
+        .order('payment_date', { ascending: true }),
+    ]);
+
+    // ── Stat: today patients ──
+    const todayCount = todayPatientsRes.status === 'fulfilled'
+      ? (todayPatientsRes.value.count ?? 0) : '—';
+    document.getElementById('stat-today-patients').textContent = todayCount;
+
+    // ── Stat: today revenue ──
+    let todayRev = 0;
+    if (todayRevenueRes.status === 'fulfilled' && todayRevenueRes.value.data) {
+      todayRev = todayRevenueRes.value.data.reduce((s, r) => s + Number(r.amount || 0), 0);
+    }
+    document.getElementById('stat-today-revenue').textContent =
+      todayRev.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    // ── Stat: pending (debtors) ──
+    let pendingTotal = 0;
+    if (pendingRes.status === 'fulfilled' && pendingRes.value.data) {
+      pendingTotal = pendingRes.value.data.reduce((s, r) => s + Number(r.remaining || 0), 0);
+    }
+    document.getElementById('stat-pending').textContent =
+      pendingTotal.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    // ── Stat: low stock ──
+    const lowLens  = lowLensRes.status  === 'fulfilled' ? (lowLensRes.value.count  ?? 0) : 0;
+    const lowFrame = lowFrameRes.status === 'fulfilled' ? (lowFrameRes.value.count ?? 0) : 0;
+    const lowTotal = lowLens + lowFrame;
+    const stockEl  = document.getElementById('stat-low-stock');
+    stockEl.textContent = lowTotal;
+    if (lowTotal > 0) {
+      stockEl.closest('.stat-card').style.borderColor = 'var(--danger)';
+      // Update nav badges
+      const rb = document.getElementById('restock-badge');
+      if (rb) { rb.textContent = lowTotal; rb.classList.remove('hidden'); }
+      const rab = document.getElementById('restock-alert-btn');
+      if (rab) rab.style.display = '';
+    }
+
+    // ── Recent patients ──
+    const rpContainer = document.getElementById('dash-recent-patients');
+    if (recentPatientsRes.status === 'fulfilled' && recentPatientsRes.value.data?.length) {
+      const rows = recentPatientsRes.value.data.map(p => {
+        const initials = p.full_name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+        const date     = formatDate(p.created_at);
+        return `
+          <div class="recent-patient-item" onclick="navigateTo('patients')">
+            <div class="patient-avatar">${initials}</div>
+            <div class="patient-item-info">
+              <div class="patient-item-name">${p.full_name}</div>
+              <div class="patient-item-meta">${p.phone || ''} · ${date}</div>
+            </div>
+            <i data-lucide="chevron-${lang === 'ar' ? 'left' : 'right'}" style="width:14px;height:14px;color:var(--text-muted);flex-shrink:0"></i>
+          </div>`;
+      }).join('');
+      rpContainer.innerHTML = rows;
+    } else {
+      rpContainer.innerHTML = `
+        <div class="empty-state" style="padding:30px">
+          <i data-lucide="users"></i>
+          <p>${lang === 'ar' ? 'لا يوجد مرضى بعد' : 'No patients yet'}</p>
+        </div>`;
+    }
+
+    // ── Follow-up list ──
+    const fuContainer = document.getElementById('dash-followup-list');
+    if (followupRes.status === 'fulfilled' && followupRes.value.data?.length) {
+      const rows = followupRes.value.data.map(p => {
+        const isOverdue = p.next_visit_date < today;
+        return `
+          <div class="followup-mini-item">
+            <i data-lucide="${isOverdue ? 'alert-circle' : 'calendar'}"></i>
+            <div style="flex:1;min-width:0">
+              <div class="truncate" style="font-size:0.85rem;font-weight:500">${p.patient_name}</div>
+              <div class="text-xs ${isOverdue ? 'text-danger' : 'text-muted'}">${formatDate(p.next_visit_date)}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      const fbTotal = followupRes.value.data.length;
+      const fb = document.getElementById('followup-badge');
+      if (fb && fbTotal > 0) { fb.textContent = fbTotal; fb.classList.remove('hidden'); }
+
+      fuContainer.innerHTML = rows;
+    } else {
+      fuContainer.innerHTML = `
+        <div class="empty-state" style="padding:20px">
+          <i data-lucide="check-circle"></i>
+          <p>${lang === 'ar' ? 'لا متابعات معلقة' : 'No pending follow-ups'}</p>
+        </div>`;
+    }
+
+    // ── Month summary ──
+    const msContainer = document.getElementById('dash-month-summary');
+
+    // Build day-by-day revenue map
+    let dayMap = {};
+    if (monthStatsRes.status === 'fulfilled' && monthStatsRes.value.data) {
+      monthStatsRes.value.data.forEach(r => {
+        const d = r.payment_date?.slice(0, 10);
+        if (d) dayMap[d] = (dayMap[d] || 0) + Number(r.amount || 0);
+      });
+    }
+
+    // Last 7 days labels + values
+    const days   = [];
+    const maxVal = Math.max(1, ...Object.values(dayMap));
+
+    for (let i = 6; i >= 0; i--) {
+      const d   = new Date(now - i * 86400000);
+      const key = d.toISOString().slice(0, 10);
+      const amt = dayMap[key] || 0;
+      const pct = Math.round((amt / maxVal) * 100);
+      const lbl = d.toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB', { weekday: 'short' });
+      days.push({ lbl, amt, pct });
+    }
+
+    // Month totals
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    const { data: monthData } = await sb.from('payments')
+      .select('amount')
+      .eq('clinic_id', cid)
+      .gte('payment_date', monthStart);
+
+    const { data: monthDebtData } = await sb.from('orders')
+      .select('remaining')
+      .eq('clinic_id', cid)
+      .in('payment_status', ['unpaid', 'partial'])
+      .gte('order_date', monthStart);
+
+    let monthRev = 0, monthDebt = 0;
+    if (monthData) monthData.forEach(r => { monthRev += Number(r.amount || 0); });
+    if (monthDebtData) monthDebtData.forEach(r => { monthDebt += Number(r.remaining || 0); });
+
+    const { count: monthPatients } = await sb.from('patients')
+      .select('id', { count: 'exact', head: true })
+      .eq('clinic_id', cid)
+      .gte('created_at', monthStart + 'T00:00:00');
+
+    const fmt = v => v.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    const barsHtml = days.map(d => `
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">${d.lbl}</span>
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:${d.pct}%"></div>
+        </div>
+        <span class="mini-bar-amt">${d.amt > 0 ? d.amt.toLocaleString() : '—'}</span>
+      </div>`).join('');
+
+    msContainer.innerHTML = `
+      <div class="month-row">
+        <span class="month-row-label">${lang === 'ar' ? 'مرضى الشهر' : 'Month Patients'}</span>
+        <span class="month-row-value">${monthPatients ?? 0}</span>
+      </div>
+      <div class="month-row">
+        <span class="month-row-label">${lang === 'ar' ? 'إيرادات الشهر' : 'Month Revenue'}</span>
+        <span class="month-row-value green">${fmt(monthRev)}</span>
+      </div>
+      <div class="month-row" style="margin-bottom:12px">
+        <span class="month-row-label">${lang === 'ar' ? 'ديون مفتوحة' : 'Open Debts'}</span>
+        <span class="month-row-value orange">${fmt(monthDebt)}</span>
+      </div>
+      <div class="mini-bar-wrap">${barsHtml}</div>
+    `;
+
+    lucide.createIcons();
   }
 
   // ─────────────────────────────────────
