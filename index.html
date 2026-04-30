@@ -2688,12 +2688,236 @@
           </div>
         </div>
       </div>
-      <div id="page-ledger"    class="page-view"><div class="empty-state"><i data-lucide="receipt"></i><p>Ledger</p></div></div>
-      <div id="page-debtors"   class="page-view"><div class="empty-state"><i data-lucide="wallet"></i><p>Debtors</p></div></div>
-      <div id="page-reports"   class="page-view"><div class="empty-state"><i data-lucide="bar-chart-2"></i><p>Reports</p></div></div>
-      <div id="page-settings"  class="page-view"><div class="empty-state"><i data-lucide="settings"></i><p>Settings</p></div></div>
-      <div id="page-audit"     class="page-view"><div class="empty-state"><i data-lucide="shield-check"></i><p>Audit Log</p></div></div>
-      <div id="page-backup"    class="page-view"><div class="empty-state"><i data-lucide="database"></i><p>Backup</p></div></div>
+      <div id="page-ledger" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <input type="date" id="ledger-from" class="form-control" style="width:auto" onchange="loadLedger()">
+            <input type="date" id="ledger-to"   class="form-control" style="width:auto" onchange="loadLedger()">
+            <select id="ledger-method" class="form-control" style="width:auto;min-width:120px" onchange="loadLedger()">
+              <option value=""><span class="ar">كل الطرق</span></option>
+              <option value="cash"><span class="ar">نقداً</span></option>
+              <option value="card"><span class="ar">بطاقة</span></option>
+              <option value="transfer"><span class="ar">تحويل</span></option>
+            </select>
+          </div>
+        </div>
+        <div class="patients-stats" id="ledger-stats"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="ar">التاريخ</span><span class="en" style="display:none">Date</span></th>
+                <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
+                <th><span class="ar">المبلغ</span><span class="en" style="display:none">Amount</span></th>
+                <th><span class="ar">الطريقة</span><span class="en" style="display:none">Method</span></th>
+                <th><span class="ar">ملاحظات</span><span class="en" style="display:none">Notes</span></th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="page-debtors" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="debtors-search" class="search-input" oninput="debounceDebtorsSearch(this.value)">
+            </div>
+            <select id="debtors-filter" class="form-control" style="width:auto;min-width:130px" onchange="loadDebtors()">
+              <option value="all"><span class="ar">الكل</span></option>
+              <option value="unpaid"><span class="ar">غير مدفوع</span></option>
+              <option value="partial"><span class="ar">مدفوع جزئياً</span></option>
+            </select>
+          </div>
+        </div>
+        <div class="patients-stats" id="debtors-stats"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
+                <th><span class="ar">الإجمالي</span><span class="en" style="display:none">Total</span></th>
+                <th><span class="ar">المدفوع</span><span class="en" style="display:none">Paid</span></th>
+                <th><span class="ar">المتبقي</span><span class="en" style="display:none">Remaining</span></th>
+                <th><span class="ar">الحالة</span><span class="en" style="display:none">Status</span></th>
+                <th><span class="ar">التاريخ</span><span class="en" style="display:none">Date</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="debtors-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="page-reports" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <select id="reports-period" class="form-control" style="width:auto;min-width:160px" onchange="loadReports()">
+              <option value="7"><span class="ar">آخر 7 أيام</span></option>
+              <option value="30" selected><span class="ar">آخر 30 يوم</span></option>
+              <option value="90"><span class="ar">آخر 3 أشهر</span></option>
+              <option value="365"><span class="ar">هذه السنة</span></option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-4" id="reports-kpis" style="margin-bottom:20px"></div>
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="trending-up"></i><span class="ar">الإيرادات اليومية</span><span class="en" style="display:none">Daily Revenue</span></div></div>
+            <div id="reports-rev-chart" style="padding:8px 0"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="pie-chart"></i><span class="ar">طرق الدفع</span><span class="en" style="display:none">Payment Methods</span></div></div>
+            <div id="reports-method-chart" style="padding:8px 0"></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="glasses"></i><span class="ar">أكثر الإطارات مبيعاً</span><span class="en" style="display:none">Top Frames</span></div></div>
+            <div id="reports-top-frames"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="circle-dot"></i><span class="ar">أكثر العدسات مبيعاً</span><span class="en" style="display:none">Top Lenses</span></div></div>
+            <div id="reports-top-lenses"></div>
+          </div>
+        </div>
+      </div>
+      <div id="page-settings" class="page-view">
+        <div style="max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+          <!-- Clinic info -->
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="building-2"></i><span class="ar">معلومات العيادة</span><span class="en" style="display:none">Clinic Info</span></div></div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">اسم العيادة (عربي)</span><span class="en" style="display:none">Clinic Name (AR)</span></label>
+                <input type="text" id="s-name-ar" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">اسم العيادة (إنجليزي)</span><span class="en" style="display:none">Clinic Name (EN)</span></label>
+                <input type="text" id="s-name-en" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الهاتف</span><span class="en" style="display:none">Phone</span></label>
+                <input type="text" id="s-phone" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">العنوان</span><span class="en" style="display:none">Address</span></label>
+                <input type="text" id="s-address" class="form-control">
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label"><span class="ar">نص تذييل الوصفة</span><span class="en" style="display:none">Prescription Footer</span></label>
+                <input type="text" id="s-footer" class="form-control" placeholder="e.g. شكراً لزيارتكم">
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:flex-end">
+              <button class="btn btn-primary" onclick="saveClinicSettings()">
+                <i data-lucide="save"></i>
+                <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+              </button>
+            </div>
+          </div>
+          <!-- Preferences -->
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="sliders-horizontal"></i><span class="ar">التفضيلات</span><span class="en" style="display:none">Preferences</span></div></div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">اللغة</span><span class="en" style="display:none">Language</span></label>
+                <select id="s-lang" class="form-control" onchange="previewLang(this.value)">
+                  <option value="ar">العربية</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">المظهر</span><span class="en" style="display:none">Theme</span></label>
+                <select id="s-theme" class="form-control" onchange="previewTheme(this.value)">
+                  <option value="dark"><span class="ar">داكن</span></option>
+                  <option value="light"><span class="ar">فاتح</span></option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">أيام المتابعة الافتراضية</span><span class="en" style="display:none">Default Follow-Up Days</span></label>
+                <input type="number" id="s-followup-days" class="form-control" min="1" max="365">
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:flex-end">
+              <button class="btn btn-primary" onclick="saveClinicSettings()">
+                <i data-lucide="save"></i>
+                <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+              </button>
+            </div>
+          </div>
+          <!-- Team -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><i data-lucide="users"></i><span class="ar">الفريق</span><span class="en" style="display:none">Team</span></div>
+            </div>
+            <div id="settings-team-list" style="margin-bottom:12px"></div>
+            <div id="settings-error" class="form-error hidden"></div>
+          </div>
+          <!-- Doctors -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><i data-lucide="stethoscope"></i><span class="ar">الأطباء</span><span class="en" style="display:none">Doctors</span></div>
+              <button class="btn btn-secondary btn-sm" onclick="openDoctorModal()">
+                <i data-lucide="plus"></i>
+                <span class="ar">إضافة</span><span class="en" style="display:none">Add</span>
+              </button>
+            </div>
+            <div id="settings-doctors-list"></div>
+          </div>
+        </div>
+      </div>
+      <div id="page-audit" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <input type="date" id="audit-from" class="form-control" style="width:auto" onchange="loadAudit()">
+            <input type="date" id="audit-to"   class="form-control" style="width:auto" onchange="loadAudit()">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="ar">الوقت</span><span class="en" style="display:none">Time</span></th>
+                <th><span class="ar">المستخدم</span><span class="en" style="display:none">User</span></th>
+                <th><span class="ar">العملية</span><span class="en" style="display:none">Action</span></th>
+                <th><span class="ar">الجدول</span><span class="en" style="display:none">Table</span></th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="page-backup" class="page-view">
+        <div style="max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="download"></i><span class="ar">تصدير البيانات</span><span class="en" style="display:none">Export Data</span></div></div>
+            <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:16px">
+              <span class="ar">تصدير جميع بيانات العيادة كملف JSON يمكن استيراده لاحقاً.</span>
+              <span class="en" style="display:none">Export all clinic data as a JSON file for safe-keeping.</span>
+            </p>
+            <button class="btn btn-primary" onclick="exportBackup()">
+              <i data-lucide="download"></i>
+              <span class="ar">تنزيل نسخة احتياطية</span><span class="en" style="display:none">Download Backup</span>
+            </button>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="upload"></i><span class="ar">استيراد / استعادة</span><span class="en" style="display:none">Import / Restore</span></div></div>
+            <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:16px">
+              <span class="ar">⚠️ الاستيراد يستبدل البيانات الحالية. تأكد من صحة الملف قبل المتابعة.</span>
+              <span class="en" style="display:none">⚠️ Import will overwrite existing data. Make sure the file is valid.</span>
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input type="file" id="backup-file-input" accept=".json" class="form-control" style="max-width:280px">
+              <button class="btn btn-danger" onclick="importBackup()">
+                <i data-lucide="upload"></i>
+                <span class="ar">استعادة</span><span class="en" style="display:none">Restore</span>
+              </button>
+            </div>
+            <div id="backup-status" style="margin-top:12px;font-size:0.85rem"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- ═══════════════════════════════════════════════════
            CHUNK 4 — PRESCRIPTION MODAL
@@ -3363,6 +3587,11 @@
       if (page === 'frames')    loadFrames();
       if (page === 'restock')   loadRestock();
       if (page === 'followup')  loadFollowups();
+      if (page === 'ledger')    { initLedgerDates(); loadLedger(); }
+      if (page === 'debtors')   loadDebtors();
+      if (page === 'reports')   loadReports();
+      if (page === 'settings')  loadSettings();
+      if (page === 'audit')     { initAuditDates(); loadAudit(); }
     }
   }
 
@@ -4470,8 +4699,8 @@
 
     // Populate frame name from inventory
     if (Rx.selectedFrameId) {
-      const { data: fr } = await sb.from('frames').select('name,brand').eq('id', Rx.selectedFrameId).single();
-      if (fr) document.getElementById('rx-frame-name').value = [fr.brand, fr.name].filter(Boolean).join(' — ');
+      const { data: fr } = await sb.from('frames').select('model,brand').eq('id', Rx.selectedFrameId).single();
+      if (fr) document.getElementById('rx-frame-name').value = [fr.brand, fr.model].filter(Boolean).join(' — ');
     }
 
     recalcTotal();
@@ -4895,14 +5124,19 @@
         .select('id').eq('prescription_id', rxId).maybeSingle();
 
       if (!existingPmt) {
+        // Resolve the order_id we just saved (required by payments FK)
+        const { data: linkedOrder } = await sb.from('orders')
+          .select('id').eq('prescription_id', rxId).maybeSingle();
+
         await sb.from('payments').insert({
-          clinic_id:      App.clinic.id,
-          patient_id:     Rx.patientId,
+          clinic_id:       App.clinic.id,
+          patient_id:      Rx.patientId,
           prescription_id: rxId,
-          amount:         paid,
-          payment_method: document.getElementById('rx-payment-method').value,
-          payment_date:   examDate,
-          created_by:     App.clinicUser.id,
+          order_id:        linkedOrder?.id || null,
+          amount:          paid,
+          payment_method:  document.getElementById('rx-payment-method').value,
+          payment_date:    examDate,
+          created_by:      App.clinicUser.id,
         }).catch(() => {});
       }
     }
@@ -5540,6 +5774,730 @@
     lucide.createIcons();
   }
 
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 9 — LEDGER + DEBTORS
+  // ═══════════════════════════════════════════════════
+
+  const Debtors = { searchTimer: null, payingOrderId: null, payingPatientName: null, payingRemaining: 0 };
+
+  // ── helpers ─────────────────────────────────
+  function fmtIQD(n) { return Number(n || 0).toLocaleString() + ' IQD'; }
+  function todayISO() { return new Date().toISOString().split('T')[0]; }
+  function daysAgoISO(n) {
+    const d = new Date(); d.setDate(d.getDate() - n);
+    return d.toISOString().split('T')[0];
+  }
+
+  // ── LEDGER ──────────────────────────────────
+
+  async function loadLedger() {
+    const lang   = App.clinic?.language || 'ar';
+    const cid    = App.clinic?.id;
+    const from   = document.getElementById('ledger-from')?.value || daysAgoISO(30);
+    const to     = document.getElementById('ledger-to')?.value   || todayISO();
+    const method = document.getElementById('ledger-method')?.value || '';
+    const tbody  = document.getElementById('ledger-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    let q = sb.from('payments')
+      .select('id, amount, payment_method, payment_date, notes, patient_id, patients(full_name)')
+      .eq('clinic_id', cid)
+      .gte('payment_date', from)
+      .lte('payment_date', to)
+      .order('payment_date', { ascending: false })
+      .order('created_at',   { ascending: false });
+
+    if (method) q = q.eq('payment_method', method);
+
+    const { data, error } = await q;
+    const rows = data || [];
+
+    // Stats
+    const total    = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const cash     = rows.filter(r => r.payment_method === 'cash').reduce((s, r) => s + Number(r.amount), 0);
+    const card     = rows.filter(r => r.payment_method === 'card').reduce((s, r) => s + Number(r.amount), 0);
+    const transfer = rows.filter(r => r.payment_method === 'transfer').reduce((s, r) => s + Number(r.amount), 0);
+
+    document.getElementById('ledger-stats').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val" style="color:var(--success)">${fmtIQD(total)}</span><span class="pt-stat-lbl"><span class="ar">الإجمالي</span><span class="en" style="display:none">Total</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(cash)}</span><span class="pt-stat-lbl"><span class="ar">نقداً</span><span class="en" style="display:none">Cash</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(card)}</span><span class="pt-stat-lbl"><span class="ar">بطاقة</span><span class="en" style="display:none">Card</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(transfer)}</span><span class="pt-stat-lbl"><span class="ar">تحويل</span><span class="en" style="display:none">Transfer</span></span></div>
+    `;
+    applyLanguage(lang, false);
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i data-lucide="receipt"></i><p>${lang === 'ar' ? 'لا توجد مدفوعات في هذه الفترة' : 'No payments in this period'}</p></div></td></tr>`;
+      lucide.createIcons(); return;
+    }
+
+    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة', transfer: 'تحويل' };
+    const METHOD_BADGE = { cash: 'badge-success', card: 'badge-info', transfer: 'badge-warning' };
+
+    tbody.innerHTML = rows.map(r => {
+      const fmtDate = new Date(r.payment_date).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
+      const methodLabel = lang === 'ar' ? (METHOD_AR[r.payment_method] || r.payment_method) : r.payment_method;
+      return `<tr>
+        <td style="color:var(--text-muted)">${fmtDate}</td>
+        <td style="font-weight:500">${r.patients?.full_name || '—'}</td>
+        <td style="font-family:var(--font-mono);font-weight:600;color:var(--success)">${fmtIQD(r.amount)}</td>
+        <td><span class="badge ${METHOD_BADGE[r.payment_method] || 'badge-muted'}">${methodLabel}</span></td>
+        <td style="color:var(--text-muted);font-size:0.8rem">${r.notes || ''}</td>
+      </tr>`;
+    }).join('');
+    lucide.createIcons();
+  }
+
+  function initLedgerDates() {
+    const fromEl = document.getElementById('ledger-from');
+    const toEl   = document.getElementById('ledger-to');
+    if (fromEl && !fromEl.value) fromEl.value = daysAgoISO(30);
+    if (toEl   && !toEl.value)   toEl.value   = todayISO();
+  }
+
+  // ── DEBTORS ─────────────────────────────────
+
+  function debounceDebtorsSearch() {
+    clearTimeout(Debtors.searchTimer);
+    Debtors.searchTimer = setTimeout(() => loadDebtors(), 350);
+  }
+
+  async function loadDebtors() {
+    const lang   = App.clinic?.language || 'ar';
+    const cid    = App.clinic?.id;
+    const search = document.getElementById('debtors-search')?.value?.trim() || '';
+    const filter = document.getElementById('debtors-filter')?.value || 'all';
+    const tbody  = document.getElementById('debtors-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    let q = sb.from('orders')
+      .select('id, total, paid, remaining, payment_status, order_date, patient_id, patients(full_name, phone)')
+      .eq('clinic_id', cid)
+      .in('payment_status', filter === 'all' ? ['unpaid','partial'] : [filter])
+      .order('order_date', { ascending: false });
+
+    const { data, error } = await q;
+    let rows = data || [];
+
+    if (search) {
+      const s = search.toLowerCase();
+      rows = rows.filter(r =>
+        r.patients?.full_name?.toLowerCase().includes(s) ||
+        r.patients?.phone?.includes(s)
+      );
+    }
+
+    // Stats
+    const totalDebt = rows.reduce((s, r) => s + Number(r.remaining || 0), 0);
+    const countUnpaid  = rows.filter(r => r.payment_status === 'unpaid').length;
+    const countPartial = rows.filter(r => r.payment_status === 'partial').length;
+
+    document.getElementById('debtors-stats').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val" style="color:var(--danger)">${fmtIQD(totalDebt)}</span><span class="pt-stat-lbl"><span class="ar">إجمالي المديونية</span><span class="en" style="display:none">Total Debt</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${countUnpaid}</span><span class="pt-stat-lbl"><span class="ar">غير مدفوع</span><span class="en" style="display:none">Unpaid</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${countPartial}</span><span class="pt-stat-lbl"><span class="ar">جزئي</span><span class="en" style="display:none">Partial</span></span></div>
+    `;
+    applyLanguage(lang, false);
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="check-circle"></i><p>${lang === 'ar' ? 'لا توجد مديونيات' : 'No outstanding debts'}</p></div></td></tr>`;
+      lucide.createIcons(); return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const fmtDate = new Date(r.order_date).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
+      const statusBadge = r.payment_status === 'unpaid'
+        ? `<span class="badge badge-danger"><span class="ar">غير مدفوع</span><span class="en" style="display:none">Unpaid</span></span>`
+        : `<span class="badge badge-warning"><span class="ar">جزئي</span><span class="en" style="display:none">Partial</span></span>`;
+      const patName = (r.patients?.full_name || '—').replace(/'/g, "\\'");
+      return `<tr>
+        <td style="font-weight:500">${r.patients?.full_name || '—'}</td>
+        <td class="font-mono">${fmtIQD(r.total)}</td>
+        <td class="font-mono" style="color:var(--success)">${fmtIQD(r.paid)}</td>
+        <td class="font-mono" style="color:var(--danger);font-weight:700">${fmtIQD(r.remaining)}</td>
+        <td>${statusBadge}</td>
+        <td style="color:var(--text-muted)">${fmtDate}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openPayModal('${r.id}','${patName}',${r.remaining})">
+            <i data-lucide="plus"></i>
+            <span class="ar">دفعة</span><span class="en" style="display:none">Pay</span>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  function openPayModal(orderId, patientName, remaining) {
+    Debtors.payingOrderId    = orderId;
+    Debtors.payingPatientName = patientName;
+    Debtors.payingRemaining  = remaining;
+    document.getElementById('pay-modal-patient').textContent   = patientName;
+    document.getElementById('pay-modal-remaining').textContent = fmtIQD(remaining);
+    document.getElementById('pay-amount').value  = '';
+    document.getElementById('pay-date').value    = todayISO();
+    document.getElementById('pay-method').value  = 'cash';
+    document.getElementById('pay-modal-error').classList.add('hidden');
+    document.getElementById('pay-modal').classList.remove('hidden');
+    applyLanguage(App.clinic?.language || 'ar', false);
+    lucide.createIcons();
+  }
+
+  function closePayModal(e) {
+    if (e && e.target !== document.getElementById('pay-modal')) return;
+    document.getElementById('pay-modal').classList.add('hidden');
+    Debtors.payingOrderId = null;
+  }
+
+  async function saveQuickPayment() {
+    const lang   = App.clinic?.language || 'ar';
+    const btn    = document.getElementById('pay-save-btn');
+    const errEl  = document.getElementById('pay-modal-error');
+    errEl.classList.add('hidden');
+
+    const amount = parseFloat(document.getElementById('pay-amount').value);
+    if (!amount || amount <= 0) {
+      errEl.textContent = lang === 'ar' ? 'أدخل مبلغاً صحيحاً' : 'Enter a valid amount';
+      errEl.classList.remove('hidden'); return;
+    }
+    if (amount > Debtors.payingRemaining) {
+      errEl.textContent = lang === 'ar' ? 'المبلغ أكبر من المتبقي' : 'Amount exceeds remaining balance';
+      errEl.classList.remove('hidden'); return;
+    }
+
+    setButtonLoading(btn, true);
+    const { error } = await sb.from('payments').insert({
+      clinic_id:      App.clinic.id,
+      order_id:       Debtors.payingOrderId,
+      patient_id:     null, // will be resolved by trigger via order
+      amount,
+      payment_method: document.getElementById('pay-method').value,
+      payment_date:   document.getElementById('pay-date').value,
+      created_by:     App.clinicUser.id,
+    });
+    setButtonLoading(btn, false);
+
+    if (error) {
+      // Try resolving patient_id from order
+      const { data: ord } = await sb.from('orders').select('patient_id').eq('id', Debtors.payingOrderId).single();
+      if (ord) {
+        const { error: e2 } = await sb.from('payments').insert({
+          clinic_id:      App.clinic.id,
+          order_id:       Debtors.payingOrderId,
+          patient_id:     ord.patient_id,
+          amount,
+          payment_method: document.getElementById('pay-method').value,
+          payment_date:   document.getElementById('pay-date').value,
+          created_by:     App.clinicUser.id,
+        });
+        if (e2) {
+          errEl.textContent = (lang === 'ar' ? 'خطأ: ' : 'Error: ') + (e2.message || '');
+          errEl.classList.remove('hidden'); return;
+        }
+      }
+    }
+
+    showToast(lang === 'ar' ? 'تم تسجيل الدفعة' : 'Payment recorded', 'success');
+    document.getElementById('pay-modal').classList.add('hidden');
+    loadDebtors();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 10 — REPORTS
+  // ═══════════════════════════════════════════════════
+
+  async function loadReports() {
+    const lang  = App.clinic?.language || 'ar';
+    const cid   = App.clinic?.id;
+    const days  = parseInt(document.getElementById('reports-period')?.value || '30');
+    const from  = daysAgoISO(days);
+    const to    = todayISO();
+
+    // KPIs: payments in period
+    const { data: pmts } = await sb.from('payments')
+      .select('amount, payment_method, payment_date')
+      .eq('clinic_id', cid)
+      .gte('payment_date', from)
+      .lte('payment_date', to);
+
+    const revenue = (pmts || []).reduce((s, p) => s + Number(p.amount), 0);
+
+    // Rx count
+    const { count: rxCount } = await sb.from('prescriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('clinic_id', cid)
+      .gte('exam_date', from)
+      .lte('exam_date', to);
+
+    // Debts total
+    const { data: debtOrders } = await sb.from('orders')
+      .select('remaining')
+      .eq('clinic_id', cid)
+      .in('payment_status', ['unpaid','partial']);
+    const totalDebt = (debtOrders || []).reduce((s, o) => s + Number(o.remaining || 0), 0);
+
+    // New patients
+    const { count: newPats } = await sb.from('patients')
+      .select('id', { count: 'exact', head: true })
+      .eq('clinic_id', cid)
+      .gte('created_at', from + 'T00:00:00');
+
+    document.getElementById('reports-kpis').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="trending-up"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">${fmtIQD(revenue)}</div>
+          <div class="stat-label"><span class="ar">الإيرادات</span><span class="en" style="display:none">Revenue</span></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="file-text"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">${rxCount || 0}</div>
+          <div class="stat-label"><span class="ar">وصفات</span><span class="en" style="display:none">Prescriptions</span></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange"><i data-lucide="users"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">${newPats || 0}</div>
+          <div class="stat-label"><span class="ar">مراجعون جدد</span><span class="en" style="display:none">New Patients</span></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i data-lucide="wallet"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">${fmtIQD(totalDebt)}</div>
+          <div class="stat-label"><span class="ar">إجمالي المديونية</span><span class="en" style="display:none">Total Debt</span></div>
+        </div>
+      </div>
+    `;
+
+    // Daily revenue mini bar chart (last N days bucketed by week or day)
+    const byDate = {};
+    (pmts || []).forEach(p => {
+      const d = p.payment_date;
+      byDate[d] = (byDate[d] || 0) + Number(p.amount);
+    });
+    const dateKeys = Object.keys(byDate).sort().slice(-14); // last 14 days max
+    const maxRev   = Math.max(...dateKeys.map(d => byDate[d]), 1);
+
+    document.getElementById('reports-rev-chart').innerHTML = dateKeys.length
+      ? dateKeys.map(d => {
+          const pct  = Math.round((byDate[d] / maxRev) * 100);
+          const lbl  = new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB', { month:'short', day:'numeric' });
+          return `<div class="mini-bar-row">
+            <span class="mini-bar-label" style="width:60px;font-size:0.7rem">${lbl}</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%"></div></div>
+            <span class="mini-bar-amt" style="font-size:0.75rem">${Number(byDate[d]).toLocaleString()}</span>
+          </div>`;
+        }).join('')
+      : `<div class="empty-state" style="padding:20px"><p>${lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</p></div>`;
+
+    // Payment method breakdown
+    const methodTotals = { cash: 0, card: 0, transfer: 0 };
+    (pmts || []).forEach(p => { if (methodTotals[p.payment_method] !== undefined) methodTotals[p.payment_method] += Number(p.amount); });
+    const totalForPct = Object.values(methodTotals).reduce((a, b) => a + b, 1);
+    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة', transfer: 'تحويل' };
+    const METHOD_COLOR = { cash: 'var(--success)', card: 'var(--accent)', transfer: 'var(--warning)' };
+
+    document.getElementById('reports-method-chart').innerHTML = Object.entries(methodTotals).map(([k, v]) => {
+      const pct = Math.round((v / totalForPct) * 100);
+      const lbl = lang === 'ar' ? METHOD_AR[k] : k;
+      return `<div class="mini-bar-row">
+        <span class="mini-bar-label" style="width:60px">${lbl}</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:${METHOD_COLOR[k]}"></div></div>
+        <span class="mini-bar-amt">${pct}%</span>
+      </div>`;
+    }).join('');
+
+    // Top frames (by count of orders referencing each frame)
+    const { data: topFrameOrders } = await sb.from('orders')
+      .select('frame_id, frames!orders_frame_id_fkey(brand, model)')
+      .eq('clinic_id', cid)
+      .not('frame_id', 'is', null)
+      .gte('order_date', from);
+
+    const frameCounts = {};
+    (topFrameOrders || []).forEach(o => {
+      if (!o.frame_id) return;
+      const key  = o.frame_id;
+      const name = [o.frames?.brand, o.frames?.model].filter(Boolean).join(' ') || '—';
+      frameCounts[key] = { name, count: (frameCounts[key]?.count || 0) + 1 };
+    });
+    const topFrames = Object.values(frameCounts).sort((a, b) => b.count - a.count).slice(0, 6);
+
+    document.getElementById('reports-top-frames').innerHTML = topFrames.length
+      ? topFrames.map((f, i) => `
+          <div class="month-row">
+            <span class="month-row-label">${i + 1}. ${f.name}</span>
+            <span class="month-row-value">${f.count}</span>
+          </div>`).join('')
+      : `<div class="empty-state" style="padding:20px"><p>${lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</p></div>`;
+
+    // Top lenses
+    const { data: topLensOrders } = await sb.from('orders')
+      .select('lens_id, lenses!orders_lens_id_fkey(brand, lens_type)')
+      .eq('clinic_id', cid)
+      .not('lens_id', 'is', null)
+      .gte('order_date', from);
+
+    const lensCounts = {};
+    (topLensOrders || []).forEach(o => {
+      if (!o.lens_id) return;
+      const key  = o.lens_id;
+      const name = [o.lenses?.brand, LENS_TYPE_LABELS[o.lenses?.lens_type]].filter(Boolean).join(' ') || '—';
+      lensCounts[key] = { name, count: (lensCounts[key]?.count || 0) + 1 };
+    });
+    const topLenses = Object.values(lensCounts).sort((a, b) => b.count - a.count).slice(0, 6);
+
+    document.getElementById('reports-top-lenses').innerHTML = topLenses.length
+      ? topLenses.map((l, i) => `
+          <div class="month-row">
+            <span class="month-row-label">${i + 1}. ${l.name}</span>
+            <span class="month-row-value">${l.count}</span>
+          </div>`).join('')
+      : `<div class="empty-state" style="padding:20px"><p>${lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</p></div>`;
+
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 11 — SETTINGS + AUDIT + BACKUP
+  // ═══════════════════════════════════════════════════
+
+  // ── SETTINGS ────────────────────────────────
+
+  async function loadSettings() {
+    const lang = App.clinic?.language || 'ar';
+    const c    = App.clinic;
+    if (!c) return;
+
+    document.getElementById('s-name-ar').value       = c.name_ar || c.name || '';
+    document.getElementById('s-name-en').value       = c.name    || '';
+    document.getElementById('s-phone').value         = c.phone   || '';
+    document.getElementById('s-address').value       = c.address || '';
+    document.getElementById('s-footer').value        = c.footer_text || '';
+    document.getElementById('s-lang').value          = c.language || 'ar';
+    document.getElementById('s-theme').value         = c.theme   || 'dark';
+    document.getElementById('s-followup-days').value = c.next_visit_default || 30;
+
+    // Load team
+    const { data: team } = await sb.from('clinic_users')
+      .select('id, full_name, role, phone, is_active')
+      .eq('clinic_id', c.id)
+      .order('role');
+
+    const ROLE_LABELS = { admin: lang === 'ar' ? 'مدير' : 'Admin', doctor: lang === 'ar' ? 'طبيب' : 'Doctor', receptionist: lang === 'ar' ? 'موظف استقبال' : 'Receptionist' };
+    document.getElementById('settings-team-list').innerHTML = (team || []).map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div class="patient-avatar">${(u.full_name || '?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.875rem;font-weight:500">${u.full_name}</div>
+          <div style="font-size:0.775rem;color:var(--text-muted)">${u.phone || ''}</div>
+        </div>
+        <span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-muted'}">${ROLE_LABELS[u.role] || u.role}</span>
+        ${!u.is_active ? '<span class="badge badge-danger">'+( lang==='ar' ? 'معطل' : 'Inactive')+'</span>' : ''}
+      </div>
+    `).join('');
+
+    // Load doctors
+    loadSettingsDoctors();
+    applyLanguage(lang, false);
+  }
+
+  async function loadSettingsDoctors() {
+    const lang = App.clinic?.language || 'ar';
+    const { data: docs } = await sb.from('doctors')
+      .select('id, full_name, title, phone')
+      .eq('clinic_id', App.clinic.id)
+      .order('full_name');
+
+    document.getElementById('settings-doctors-list').innerHTML = (docs || []).length
+      ? (docs || []).map(d => `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.875rem;font-weight:500">${[d.title, d.full_name].filter(Boolean).join(' ')}</div>
+              <div style="font-size:0.775rem;color:var(--text-muted)">${d.phone || ''}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="openDoctorModal('${d.id}')"><i data-lucide="pencil"></i></button>
+          </div>`).join('')
+      : `<div style="padding:16px;color:var(--text-muted);font-size:0.875rem">${lang === 'ar' ? 'لا يوجد أطباء مضافون' : 'No doctors added yet'}</div>`;
+
+    lucide.createIcons();
+  }
+
+  function previewLang(val) {
+    applyLanguage(val, true);
+  }
+
+  function previewTheme(val) {
+    applyTheme(val, false); // use existing applyTheme — updates attribute + icon, no localStorage
+  }
+
+  async function saveClinicSettings() {
+    const lang  = App.clinic?.language || 'ar';
+    const errEl = document.getElementById('settings-error');
+    if (errEl) errEl.classList.add('hidden');
+
+    const newLang  = document.getElementById('s-lang').value;
+    const newTheme = document.getElementById('s-theme').value;
+
+    const payload = {
+      name:                 document.getElementById('s-name-en').value.trim() || App.clinic.name,
+      name_ar:              document.getElementById('s-name-ar').value.trim() || null,
+      phone:                document.getElementById('s-phone').value.trim()   || null,
+      address:              document.getElementById('s-address').value.trim() || null,
+      footer_text:          document.getElementById('s-footer').value.trim()  || null,
+      language:             newLang,
+      theme:                newTheme,
+      next_visit_default:   parseInt(document.getElementById('s-followup-days').value) || 30,
+    };
+
+    const { error } = await sb.from('clinics').update(payload).eq('id', App.clinic.id);
+    if (error) {
+      if (errEl) { errEl.textContent = error.message; errEl.classList.remove('hidden'); }
+      showToast(lang === 'ar' ? 'فشل الحفظ' : 'Save failed', 'error');
+      return;
+    }
+
+    // Update local App.clinic
+    Object.assign(App.clinic, payload);
+    previewTheme(newTheme);
+    applyLanguage(newLang, true);
+    showToast(lang === 'ar' ? 'تم حفظ الإعدادات' : 'Settings saved', 'success');
+  }
+
+  // ── DOCTORS (settings) ───────────────────────
+  const DoctorMgr = { editingId: null };
+
+  async function openDoctorModal(doctorId = null) {
+    const lang = App.clinic?.language || 'ar';
+    DoctorMgr.editingId = null;
+    document.getElementById('doctor-name').value  = '';
+    document.getElementById('doctor-title').value = '';
+    document.getElementById('doctor-phone').value = '';
+    document.getElementById('doctor-form-error').classList.add('hidden');
+    document.getElementById('doctor-delete-btn').style.display = 'none';
+
+    if (doctorId) {
+      DoctorMgr.editingId = doctorId;
+      document.getElementById('doctor-delete-btn').style.display = '';
+      document.getElementById('doctor-modal-title').innerHTML = '<span class="ar">تعديل طبيب</span><span class="en" style="display:none">Edit Doctor</span>';
+      const { data: d } = await sb.from('doctors').select('*').eq('id', doctorId).single();
+      if (d) {
+        document.getElementById('doctor-name').value  = d.full_name || '';
+        document.getElementById('doctor-title').value = d.title || '';
+        document.getElementById('doctor-phone').value = d.phone || '';
+      }
+    } else {
+      document.getElementById('doctor-modal-title').innerHTML = '<span class="ar">طبيب جديد</span><span class="en" style="display:none">New Doctor</span>';
+    }
+
+    document.getElementById('doctor-modal').classList.remove('hidden');
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  function closeDoctorModal(e) {
+    if (e && e.target !== document.getElementById('doctor-modal')) return;
+    document.getElementById('doctor-modal').classList.add('hidden');
+    DoctorMgr.editingId = null;
+  }
+
+  async function saveDoctor() {
+    const lang  = App.clinic?.language || 'ar';
+    const btn   = document.getElementById('doctor-save-btn');
+    const errEl = document.getElementById('doctor-form-error');
+    errEl.classList.add('hidden');
+
+    const name = document.getElementById('doctor-name').value.trim();
+    if (!name) {
+      errEl.textContent = lang === 'ar' ? 'الاسم مطلوب' : 'Name is required';
+      errEl.classList.remove('hidden'); return;
+    }
+
+    const payload = {
+      clinic_id:  App.clinic.id,
+      full_name:  name,
+      title:      document.getElementById('doctor-title').value.trim() || null,
+      phone:      document.getElementById('doctor-phone').value.trim() || null,
+    };
+
+    setButtonLoading(btn, true);
+    const { error } = DoctorMgr.editingId
+      ? await sb.from('doctors').update(payload).eq('id', DoctorMgr.editingId)
+      : await sb.from('doctors').insert(payload);
+    setButtonLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.classList.remove('hidden'); return;
+    }
+
+    showToast(lang === 'ar' ? 'تم الحفظ' : 'Saved', 'success');
+    document.getElementById('doctor-modal').classList.add('hidden');
+    loadSettingsDoctors();
+  }
+
+  async function deleteDoctor() {
+    const lang = App.clinic?.language || 'ar';
+    if (!DoctorMgr.editingId) return;
+    if (!confirm(lang === 'ar' ? 'حذف هذا الطبيب؟' : 'Delete this doctor?')) return;
+    const { error } = await sb.from('doctors').delete().eq('id', DoctorMgr.editingId);
+    if (error) { showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error'); return; }
+    showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
+    document.getElementById('doctor-modal').classList.add('hidden');
+    loadSettingsDoctors();
+  }
+
+  // ── AUDIT LOG ────────────────────────────────
+
+  async function loadAudit() {
+    const lang  = App.clinic?.language || 'ar';
+    const cid   = App.clinic?.id;
+    const from  = document.getElementById('audit-from')?.value || daysAgoISO(7);
+    const to    = document.getElementById('audit-to')?.value   || todayISO();
+    const tbody = document.getElementById('audit-tbody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    const { data, error } = await sb.from('audit_logs')
+      .select('id, created_at, action, table_name, user_id')
+      .eq('clinic_id', cid)
+      .gte('created_at', from + 'T00:00:00')
+      .lte('created_at', to   + 'T23:59:59')
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    if (!data?.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i data-lucide="shield-check"></i><p>${lang === 'ar' ? 'لا توجد سجلات' : 'No audit records'}</p></div></td></tr>`;
+      lucide.createIcons(); return;
+    }
+
+    // Build user_id → name map from clinic_users for this clinic
+    const uniqueUserIds = [...new Set(data.map(r => r.user_id).filter(Boolean))];
+    const userNameMap = {};
+    if (uniqueUserIds.length) {
+      const { data: cuData } = await sb.from('clinic_users')
+        .select('user_id, full_name')
+        .eq('clinic_id', cid)
+        .in('user_id', uniqueUserIds);
+      (cuData || []).forEach(u => { userNameMap[u.user_id] = u.full_name; });
+    }
+
+    tbody.innerHTML = data.map(r => {
+      const ts  = new Date(r.created_at).toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
+      const userName = userNameMap[r.user_id] || '—';
+      return `<tr>
+        <td style="color:var(--text-muted);font-size:0.8rem;white-space:nowrap">${ts}</td>
+        <td style="font-weight:500">${userName}</td>
+        <td><span class="badge badge-info" style="font-size:0.7rem">${r.action}</span></td>
+        <td style="color:var(--text-muted);font-size:0.8rem">${r.table_name || ''}</td>
+      </tr>`;
+    }).join('');
+    lucide.createIcons();
+  }
+
+  function initAuditDates() {
+    const fromEl = document.getElementById('audit-from');
+    const toEl   = document.getElementById('audit-to');
+    if (fromEl && !fromEl.value) fromEl.value = daysAgoISO(7);
+    if (toEl   && !toEl.value)   toEl.value   = todayISO();
+  }
+
+  // ── BACKUP ───────────────────────────────────
+
+  async function exportBackup() {
+    const lang = App.clinic?.language || 'ar';
+    const cid  = App.clinic?.id;
+    showToast(lang === 'ar' ? 'جاري التحضير...' : 'Preparing backup...', 'info');
+
+    const [patients, prescriptions, orders, payments, lenses, frames, doctors] = await Promise.all([
+      sb.from('patients').select('*').eq('clinic_id', cid),
+      sb.from('prescriptions').select('*').eq('clinic_id', cid),
+      sb.from('orders').select('*').eq('clinic_id', cid),
+      sb.from('payments').select('*').eq('clinic_id', cid),
+      sb.from('lenses').select('*').eq('clinic_id', cid),
+      sb.from('frames').select('*').eq('clinic_id', cid),
+      sb.from('doctors').select('*').eq('clinic_id', cid),
+    ]);
+
+    const backup = {
+      version:    '1.0',
+      clinic_id:  cid,
+      exported_at: new Date().toISOString(),
+      clinic:     App.clinic,
+      patients:   patients.data || [],
+      prescriptions: prescriptions.data || [],
+      orders:     orders.data || [],
+      payments:   payments.data || [],
+      lenses:     lenses.data || [],
+      frames:     frames.data || [],
+      doctors:    doctors.data || [],
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `noor-backup-${todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(lang === 'ar' ? 'تم تنزيل النسخة الاحتياطية' : 'Backup downloaded', 'success');
+  }
+
+  async function importBackup() {
+    const lang     = App.clinic?.language || 'ar';
+    const fileEl   = document.getElementById('backup-file-input');
+    const statusEl = document.getElementById('backup-status');
+    const file     = fileEl?.files?.[0];
+
+    if (!file) {
+      statusEl.textContent = lang === 'ar' ? 'اختر ملف JSON أولاً' : 'Please select a JSON file first';
+      statusEl.style.color = 'var(--danger)'; return;
+    }
+    if (!confirm(lang === 'ar' ? '⚠️ هذا الإجراء سيستبدل البيانات الحالية. هل أنت متأكد؟' : '⚠️ This will overwrite existing data. Are you sure?')) return;
+
+    statusEl.textContent = lang === 'ar' ? 'جاري الاستيراد...' : 'Importing...';
+    statusEl.style.color = 'var(--text-secondary)';
+
+    try {
+      const text   = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.clinic_id || !Array.isArray(backup.patients)) throw new Error('Invalid backup format');
+
+      const cid = App.clinic.id;
+      let ok = 0, fail = 0;
+
+      for (const [table, rows] of Object.entries({
+        patients: backup.patients,
+        doctors:  backup.doctors,
+        lenses:   backup.lenses,
+        frames:   backup.frames,
+      })) {
+        if (!rows?.length) continue;
+        const { error } = await sb.from(table).upsert(
+          rows.map(r => ({ ...r, clinic_id: cid })),
+          { onConflict: 'id', ignoreDuplicates: false }
+        );
+        if (error) { console.error(table, error); fail++; } else ok++;
+      }
+
+      statusEl.textContent = lang === 'ar'
+        ? `تم استيراد ${ok} جداول بنجاح${fail ? ' — ' + fail + ' جداول فشلت' : ''}`
+        : `Imported ${ok} tables successfully${fail ? ' — ' + fail + ' failed' : ''}`;
+      statusEl.style.color = fail ? 'var(--warning)' : 'var(--success)';
+      showToast(lang === 'ar' ? 'تم الاستيراد' : 'Import complete', 'success');
+    } catch (err) {
+      statusEl.textContent = (lang === 'ar' ? 'خطأ: ' : 'Error: ') + err.message;
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+
+
   // Expose openRxModal globally (called from patient table)
   window.openRxModal = openRxModal;
 
@@ -5707,6 +6665,91 @@
             <button class="btn btn-primary" id="frame-save-btn" onclick="saveFrame()">
               <i data-lucide="save"></i>
               <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR MODAL -->
+      <div id="doctor-modal" class="modal-backdrop hidden" onclick="closeDoctorModal(event)">
+        <div class="modal modal-sm" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title" id="doctor-modal-title">
+              <span class="ar">طبيب جديد</span><span class="en" style="display:none">New Doctor</span>
+            </div>
+            <button class="modal-close" onclick="closeDoctorModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label"><span class="ar">الاسم *</span><span class="en" style="display:none">Name *</span></label>
+              <input type="text" id="doctor-name" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="ar">اللقب</span><span class="en" style="display:none">Title</span></label>
+              <input type="text" id="doctor-title" class="form-control" placeholder="Dr. / Opt.">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="ar">الهاتف</span><span class="en" style="display:none">Phone</span></label>
+              <input type="text" id="doctor-phone" class="form-control">
+            </div>
+            <div id="doctor-form-error" class="form-error hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger btn-sm" id="doctor-delete-btn" onclick="deleteDoctor()" style="display:none;margin-inline-end:auto">
+              <i data-lucide="trash-2"></i>
+            </button>
+            <button class="btn btn-secondary" onclick="closeDoctorModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="doctor-save-btn" onclick="saveDoctor()">
+              <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADD PAYMENT MODAL (debtors quick-pay) -->
+      <div id="pay-modal" class="modal-backdrop hidden" onclick="closePayModal(event)">
+        <div class="modal modal-sm" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title">
+              <span class="ar">إضافة دفعة</span><span class="en" style="display:none">Add Payment</span>
+            </div>
+            <button class="modal-close" onclick="closePayModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom:12px;padding:10px 14px;background:var(--bg-elevated);border-radius:var(--radius-sm);font-size:0.875rem">
+              <span id="pay-modal-patient" style="font-weight:600"></span>
+              <div style="margin-top:4px;color:var(--text-muted)">
+                <span class="ar">المتبقي: </span><span class="en" style="display:none">Remaining: </span>
+                <span id="pay-modal-remaining" style="color:var(--danger);font-weight:600;font-family:var(--font-mono)"></span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="ar">المبلغ *</span><span class="en" style="display:none">Amount *</span></label>
+              <input type="number" id="pay-amount" class="form-control" min="1" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="ar">الطريقة</span><span class="en" style="display:none">Method</span></label>
+              <select id="pay-method" class="form-control">
+                <option value="cash"><span class="ar">نقداً</span></option>
+                <option value="card"><span class="ar">بطاقة</span></option>
+                <option value="transfer"><span class="ar">تحويل</span></option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="ar">التاريخ</span><span class="en" style="display:none">Date</span></label>
+              <input type="date" id="pay-date" class="form-control">
+            </div>
+            <div id="pay-modal-error" class="form-error hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closePayModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="pay-save-btn" onclick="saveQuickPayment()">
+              <i data-lucide="check"></i>
+              <span class="ar">تسجيل</span><span class="en" style="display:none">Record</span>
             </button>
           </div>
         </div>
