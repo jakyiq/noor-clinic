@@ -1850,6 +1850,102 @@
       .eye-input { padding: 6px 4px; font-size: 0.8rem; }
     }
 
+    /* ═══════════════════════════════════════
+       CHUNK 6 — PAYMENT / ORDERS PAGE
+    ═══════════════════════════════════════ */
+
+    /* Payment status badge variants */
+    .badge-paid    { background: rgba(29,184,126,0.12);  color: var(--success); }
+    .badge-partial { background: rgba(240,165,0,0.12);   color: var(--warning); }
+    .badge-unpaid  { background: rgba(224,60,80,0.12);   color: var(--danger);  }
+
+    /* Filter strip */
+    .filter-strip {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filter-chip {
+      padding: 5px 14px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: var(--font-main);
+    }
+    .filter-chip:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .filter-chip.active         { background: var(--accent-glow);           border-color: var(--accent);   color: var(--accent);   font-weight:600; }
+    .filter-chip.paid.active    { background: rgba(29,184,126,0.1);         border-color: var(--success);  color: var(--success);  font-weight:600; }
+    .filter-chip.partial.active { background: rgba(240,165,0,0.1);          border-color: var(--warning);  color: var(--warning);  font-weight:600; }
+    .filter-chip.unpaid.active  { background: rgba(224,60,80,0.1);          border-color: var(--danger);   color: var(--danger);   font-weight:600; }
+
+    /* Orders summary bar */
+    .orders-summary {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .orders-summary-item {
+      flex: 1;
+      min-width: 130px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+    .orders-summary-item .sum-label {
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .orders-summary-item .sum-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .orders-summary-item.s-total     .sum-value { color: var(--text-primary); }
+    .orders-summary-item.s-collected .sum-value { color: var(--success); }
+    .orders-summary-item.s-remaining .sum-value { color: var(--warning); }
+    .orders-summary-item.s-count     .sum-value { color: var(--accent); }
+
+    /* Collect payment modal */
+    .collect-amount-display {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--warning);
+      margin-bottom: 4px;
+    }
+    .collect-patient-name {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Clickable payment row action */
+    .pay-action-btn {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--success);
+      background: rgba(29,184,126,0.08);
+      color: var(--success);
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .pay-action-btn:hover { background: rgba(29,184,126,0.18); }
+
+    @media (max-width: 640px) {
+      .orders-summary-item { min-width: 100px; }
+    }
+
   </style>
 </head>
 <body>
@@ -2157,6 +2253,11 @@
           <i data-lucide="receipt"></i>
           <span class="ar">الصندوق اليومي</span>
           <span class="en" style="display:none">Daily Ledger</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('payment')" data-page="payment">
+          <i data-lucide="credit-card"></i>
+          <span class="ar">الطلبات والمدفوعات</span>
+          <span class="en" style="display:none">Orders & Payments</span>
         </button>
         <button class="nav-item" onclick="navigateTo('debtors')" data-page="debtors">
           <i data-lucide="wallet"></i>
@@ -2835,6 +2936,176 @@
         </div>
       </div>
 
+      <!-- ═══════════════════════════════════
+           CHUNK 6 — PAYMENT / ORDERS PAGE
+      ═══════════════════════════════════ -->
+      <div id="page-payment" class="page-view">
+
+        <!-- Toolbar -->
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="pay-search" class="search-input"
+                oninput="debouncePaySearch(this.value)" />
+            </div>
+          </div>
+          <div class="page-toolbar-end">
+            <select id="pay-date-filter" class="form-control btn-sm" style="width:auto"
+              onchange="loadOrders()">
+              <option value="today">
+                <span class="ar">اليوم</span>
+                <span class="en">Today</span>
+              </option>
+              <option value="week">
+                <span class="ar">هذا الأسبوع</span>
+                <span class="en">This week</span>
+              </option>
+              <option value="month" selected>
+                <span class="ar">هذا الشهر</span>
+                <span class="en">This month</span>
+              </option>
+              <option value="all">
+                <span class="ar">الكل</span>
+                <span class="en">All time</span>
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Summary strip -->
+        <div class="orders-summary" id="orders-summary">
+          <div class="orders-summary-item s-count">
+            <div class="sum-label"><span class="ar">إجمالي الطلبات</span><span class="en" style="display:none">Total Orders</span></div>
+            <div class="sum-value" id="sum-count">—</div>
+          </div>
+          <div class="orders-summary-item s-total">
+            <div class="sum-label"><span class="ar">المجموع الكلي</span><span class="en" style="display:none">Grand Total</span></div>
+            <div class="sum-value" id="sum-total">—</div>
+          </div>
+          <div class="orders-summary-item s-collected">
+            <div class="sum-label"><span class="ar">المحصّل</span><span class="en" style="display:none">Collected</span></div>
+            <div class="sum-value" id="sum-collected">—</div>
+          </div>
+          <div class="orders-summary-item s-remaining">
+            <div class="sum-label"><span class="ar">المتبقي</span><span class="en" style="display:none">Remaining</span></div>
+            <div class="sum-value" id="sum-remaining">—</div>
+          </div>
+        </div>
+
+        <!-- Status filter chips -->
+        <div class="filter-strip">
+          <button class="filter-chip active" data-status="all"    onclick="setPayStatusFilter('all',this)">
+            <span class="ar">الكل</span><span class="en" style="display:none">All</span>
+          </button>
+          <button class="filter-chip unpaid"  data-status="unpaid"  onclick="setPayStatusFilter('unpaid',this)">
+            <span class="ar">غير مدفوع</span><span class="en" style="display:none">Unpaid</span>
+          </button>
+          <button class="filter-chip partial" data-status="partial" onclick="setPayStatusFilter('partial',this)">
+            <span class="ar">جزئي</span><span class="en" style="display:none">Partial</span>
+          </button>
+          <button class="filter-chip paid"    data-status="paid"    onclick="setPayStatusFilter('paid',this)">
+            <span class="ar">مدفوع</span><span class="en" style="display:none">Paid</span>
+          </button>
+        </div>
+
+        <!-- Orders table -->
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
+              <th><span class="ar">التاريخ</span><span class="en" style="display:none">Date</span></th>
+              <th><span class="ar">الإجمالي</span><span class="en" style="display:none">Total</span></th>
+              <th><span class="ar">المدفوع</span><span class="en" style="display:none">Paid</span></th>
+              <th><span class="ar">المتبقي</span><span class="en" style="display:none">Remaining</span></th>
+              <th><span class="ar">الحالة</span><span class="en" style="display:none">Status</span></th>
+              <th><span class="ar">الطريقة</span><span class="en" style="display:none">Method</span></th>
+              <th></th>
+            </tr></thead>
+            <tbody id="orders-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:40px">
+                <div class="spinner lg" style="margin:auto"></div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="orders-pagination"></div>
+
+      </div><!-- /page-payment -->
+
+      <!-- ── COLLECT PAYMENT MODAL ── -->
+      <div id="collect-modal" class="modal-backdrop hidden" onclick="closeCollectModal(event)">
+        <div class="modal modal-sm" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title">
+              <i data-lucide="banknote" style="width:17px;height:17px;color:var(--success);vertical-align:middle;margin-inline-end:6px"></i>
+              <span class="ar">تسجيل دفعة</span><span class="en" style="display:none">Record Payment</span>
+            </div>
+            <button class="modal-close" onclick="closeCollectModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="collect-patient-name" id="collect-patient-name">—</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:0.8rem;color:var(--text-muted)">
+                <span class="ar">المتبقي:</span><span class="en" style="display:none">Remaining:</span>
+              </span>
+              <span class="collect-amount-display" id="collect-remaining-display">0 IQD</span>
+            </div>
+
+            <div class="form-group" style="margin-top:16px">
+              <label class="form-label">
+                <span class="ar">المبلغ المحصّل (IQD) *</span>
+                <span class="en" style="display:none">Amount to collect (IQD) *</span>
+              </label>
+              <input type="number" id="collect-amount" class="form-control" min="1" placeholder="0" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="ar">طريقة الدفع</span>
+                <span class="en" style="display:none">Payment Method</span>
+              </label>
+              <select id="collect-method" class="form-control">
+                <option value="cash"><span class="ar">نقداً / Cash</span></option>
+                <option value="transfer"><span class="ar">تحويل / Transfer</span></option>
+                <option value="card">Card</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="ar">ملاحظات (اختياري)</span>
+                <span class="en" style="display:none">Notes (optional)</span>
+              </label>
+              <input type="text" id="collect-notes" class="form-control" />
+            </div>
+
+            <div id="collect-error" class="form-error hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCollectModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="collect-save-btn" onclick="saveCollectPayment()">
+              <i data-lucide="check"></i>
+              <span class="ar">تسجيل الدفعة</span><span class="en" style="display:none">Record Payment</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholder pages for future chunks -->
+      <div id="page-followup"  class="page-view"><div class="empty-state"><i data-lucide="calendar-check"></i><p>Follow-Up — Coming soon</p></div></div>
+      <div id="page-lenses"    class="page-view"><div class="empty-state"><i data-lucide="circle-dot"></i><p>Lens Inventory — Coming soon</p></div></div>
+      <div id="page-frames"    class="page-view"><div class="empty-state"><i data-lucide="glasses"></i><p>Frame Inventory — Coming soon</p></div></div>
+      <div id="page-restock"   class="page-view"><div class="empty-state"><i data-lucide="package-open"></i><p>Restock Alerts — Coming soon</p></div></div>
+      <div id="page-ledger"    class="page-view"><div class="empty-state"><i data-lucide="receipt"></i><p>Daily Ledger — Coming soon</p></div></div>
+      <div id="page-debtors"   class="page-view"><div class="empty-state"><i data-lucide="wallet"></i><p>Debtors — Coming soon</p></div></div>
+      <div id="page-reports"   class="page-view"><div class="empty-state"><i data-lucide="bar-chart-2"></i><p>Reports — Coming soon</p></div></div>
+      <div id="page-settings"  class="page-view"><div class="empty-state"><i data-lucide="settings"></i><p>Settings — Coming soon</p></div></div>
+      <div id="page-audit"     class="page-view"><div class="empty-state"><i data-lucide="shield-check"></i><p>Audit Log — Coming soon</p></div></div>
+      <div id="page-backup"    class="page-view"><div class="empty-state"><i data-lucide="database"></i><p>Backup — Coming soon</p></div></div>
+
     </main>
 
   </div><!-- /#app -->
@@ -3085,6 +3356,7 @@
       frames:    'مخزون الإطارات',
       restock:   'تنبيهات الطلب',
       ledger:    'الصندوق اليومي',
+      payment:   'الطلبات والمدفوعات',
       debtors:   'المديونيات',
       reports:   'التقارير',
       settings:  'الإعدادات',
@@ -3099,6 +3371,7 @@
       frames:    'Frame Inventory',
       restock:   'Restock Alerts',
       ledger:    'Daily Ledger',
+      payment:   'Orders & Payments',
       debtors:   'Debtors',
       reports:   'Reports',
       settings:  'Settings',
@@ -3131,6 +3404,7 @@
     if (App.clinic) {
       if (page === 'dashboard') loadDashboard();
       if (page === 'patients')  { Patients.page = 1; loadPatients(); }
+      if (page === 'payment')   { Orders.page = 1; loadOrders(); }
     }
   }
 
@@ -4616,6 +4890,344 @@
 
   // Expose openRxModal globally (called from patient table)
   window.openRxModal = openRxModal;
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 6 — PAYMENT / ORDERS PAGE
+  // ═══════════════════════════════════════════════════
+
+  const Orders = {
+    list:        [],
+    total:       0,
+    page:        1,
+    pageSize:    20,
+    statusFilter: 'all',
+    searchQuery:  '',
+    searchTimer:  null,
+    // collect modal state
+    collectOrderId:   null,
+    collectRemaining: 0,
+    collectPatientId: null,
+  };
+
+  // ── Load orders ─────────────────────────────────
+  async function loadOrders() {
+    const lang   = App.clinic?.language || 'ar';
+    const cid    = App.clinic?.id;
+    const tbody  = document.getElementById('orders-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:36px">
+      <div class="spinner lg" style="margin:auto"></div></td></tr>`;
+
+    // Date range
+    const range = document.getElementById('pay-date-filter')?.value || 'month';
+    const now   = new Date();
+    let fromDate = null;
+    if (range === 'today') {
+      fromDate = now.toISOString().slice(0,10);
+    } else if (range === 'week') {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      fromDate = d.toISOString().slice(0,10);
+    } else if (range === 'month') {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    }
+
+    let q = sb.from('orders')
+      .select('id, order_date, total, paid, remaining, payment_status, payment_method, patient_id, prescription_id, patients(full_name, phone)', { count: 'exact' })
+      .eq('clinic_id', cid)
+      .order('order_date', { ascending: false });
+
+    if (fromDate) q = q.gte('order_date', fromDate);
+
+    if (Orders.statusFilter !== 'all') {
+      q = q.eq('payment_status', Orders.statusFilter);
+    }
+
+    if (Orders.searchQuery) {
+      // search by patient name via a .ilike on full_name — need a join workaround
+      // fetch all for the period, then filter client-side
+    }
+
+    // Pagination
+    const from = (Orders.page - 1) * Orders.pageSize;
+    const to   = from + Orders.pageSize - 1;
+    q = q.range(from, to);
+
+    const { data, error, count } = await q;
+
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:30px">Error loading orders</td></tr>`;
+      return;
+    }
+
+    Orders.list  = data || [];
+    Orders.total = count || 0;
+
+    // Summary aggregation — fetch totals separately (for all matching, not just current page)
+    fetchOrderSummary(cid, fromDate, Orders.statusFilter);
+
+    renderOrdersTable();
+    renderOrdersPagination();
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  async function fetchOrderSummary(cid, fromDate, status) {
+    let q = sb.from('orders')
+      .select('total, paid, remaining')
+      .eq('clinic_id', cid);
+
+    if (fromDate) q = q.gte('order_date', fromDate);
+    if (status !== 'all') q = q.eq('payment_status', status);
+
+    const { data } = await q;
+    if (!data) return;
+
+    const totalAmt     = data.reduce((s, o) => s + (o.total     || 0), 0);
+    const collectedAmt = data.reduce((s, o) => s + (o.paid      || 0), 0);
+    const remainingAmt = data.reduce((s, o) => s + (o.remaining || 0), 0);
+
+    const lang = App.clinic?.language || 'ar';
+    const fmt  = n => n.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    document.getElementById('sum-count').textContent     = data.length.toLocaleString();
+    document.getElementById('sum-total').textContent     = fmt(totalAmt);
+    document.getElementById('sum-collected').textContent = fmt(collectedAmt);
+    document.getElementById('sum-remaining').textContent = fmt(remainingAmt);
+  }
+
+  function renderOrdersTable() {
+    const lang  = App.clinic?.language || 'ar';
+    const tbody = document.getElementById('orders-tbody');
+    const list  = Orders.list;
+
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="8">
+        <div class="empty-state">
+          <i data-lucide="credit-card"></i>
+          <p>${lang === 'ar' ? 'لا توجد طلبات' : 'No orders found'}</p>
+        </div>
+      </td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    const statusLabel = {
+      ar: { paid: 'مدفوع', partial: 'جزئي', unpaid: 'غير مدفوع' },
+      en: { paid: 'Paid',  partial: 'Partial', unpaid: 'Unpaid' },
+    };
+    const statusBadge = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
+    const methodLabel = {
+      cash: lang === 'ar' ? 'نقد' : 'Cash',
+      transfer: lang === 'ar' ? 'تحويل' : 'Transfer',
+      card: 'Card',
+      partial: lang === 'ar' ? 'جزئي' : 'Partial',
+    };
+
+    const fmt = n => (n || 0).toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    tbody.innerHTML = list.map(o => {
+      const name    = o.patients?.full_name || '—';
+      const initial = name.charAt(0).toUpperCase();
+      const status  = o.payment_status || 'unpaid';
+      const badgeClass = statusBadge[status] || 'badge-muted';
+      const statusText = (statusLabel[lang] || statusLabel.ar)[status] || status;
+      const canCollect = status !== 'paid' && (o.remaining || 0) > 0;
+
+      return `<tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="patient-avatar">${initial}</div>
+            <div>
+              <div style="font-weight:500;font-size:0.875rem">${name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${o.patients?.phone || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td class="text-sm text-secondary font-mono">${formatDate(o.order_date)}</td>
+        <td class="font-mono text-sm">${fmt(o.total)}</td>
+        <td class="font-mono text-sm text-success">${fmt(o.paid)}</td>
+        <td class="font-mono text-sm" style="color:${o.remaining > 0 ? 'var(--warning)' : 'var(--text-muted)'}">${fmt(o.remaining)}</td>
+        <td><span class="badge ${badgeClass}">${statusText}</span></td>
+        <td class="text-sm text-secondary">${methodLabel[o.payment_method] || o.payment_method || '—'}</td>
+        <td>
+          ${canCollect
+            ? `<button class="pay-action-btn" onclick="openCollectModal('${o.id}','${name.replace(/'/g,"\\'")}','${o.patient_id}',${o.remaining || 0})">
+                <span class="ar">تحصيل</span><span class="en" style="display:none">Collect</span>
+               </button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="openRxModal('${o.patient_id}','${name.replace(/'/g,"\\'")}','${o.prescription_id}')">
+                <i data-lucide="eye"></i>
+               </button>`
+          }
+        </td>
+      </tr>`;
+    }).join('');
+
+    lucide.createIcons();
+  }
+
+  function renderOrdersPagination() {
+    const container = document.getElementById('orders-pagination');
+    const pages     = Math.ceil(Orders.total / Orders.pageSize);
+    if (pages <= 1) { container.innerHTML = ''; return; }
+    const lang = App.clinic?.language || 'ar';
+
+    let html = `<button class="page-btn" onclick="ordersGoToPage(${Orders.page - 1})" ${Orders.page === 1 ? 'disabled' : ''}>
+      <i data-lucide="${lang === 'ar' ? 'chevron-right' : 'chevron-left'}"></i></button>`;
+
+    for (let i = 1; i <= pages; i++) {
+      if (i === 1 || i === pages || Math.abs(i - Orders.page) <= 1) {
+        html += `<button class="page-btn ${i === Orders.page ? 'active' : ''}" onclick="ordersGoToPage(${i})">${i}</button>`;
+      } else if (Math.abs(i - Orders.page) === 2) {
+        html += `<span style="color:var(--text-muted);padding:0 4px">…</span>`;
+      }
+    }
+
+    html += `<button class="page-btn" onclick="ordersGoToPage(${Orders.page + 1})" ${Orders.page === pages ? 'disabled' : ''}>
+      <i data-lucide="${lang === 'ar' ? 'chevron-left' : 'chevron-right'}"></i></button>`;
+
+    container.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function ordersGoToPage(p) {
+    const pages = Math.ceil(Orders.total / Orders.pageSize);
+    if (p < 1 || p > pages) return;
+    Orders.page = p;
+    loadOrders();
+  }
+
+  function setPayStatusFilter(status, btn) {
+    Orders.statusFilter = status;
+    Orders.page = 1;
+    document.querySelectorAll('#page-payment .filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    loadOrders();
+  }
+
+  function debouncePaySearch(val) {
+    clearTimeout(Orders.searchTimer);
+    Orders.searchTimer = setTimeout(() => {
+      Orders.searchQuery = val;
+      Orders.page = 1;
+      loadOrders();
+    }, 350);
+  }
+
+  // ── Collect payment modal ─────────────────────
+  function openCollectModal(orderId, patientName, patientId, remaining) {
+    Orders.collectOrderId   = orderId;
+    Orders.collectRemaining = remaining;
+    Orders.collectPatientId = patientId;
+
+    const lang = App.clinic?.language || 'ar';
+    const fmt  = n => n.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+
+    document.getElementById('collect-patient-name').textContent        = patientName;
+    document.getElementById('collect-remaining-display').textContent   = fmt(remaining);
+    document.getElementById('collect-amount').value                    = remaining;
+    document.getElementById('collect-method').value                    = 'cash';
+    document.getElementById('collect-notes').value                     = '';
+    document.getElementById('collect-error').classList.add('hidden');
+
+    document.getElementById('collect-modal').classList.remove('hidden');
+    applyLanguage(lang, false);
+    lucide.createIcons();
+    setTimeout(() => document.getElementById('collect-amount').focus(), 100);
+  }
+
+  function closeCollectModal(e) {
+    if (e && e.target !== document.getElementById('collect-modal')) return;
+    document.getElementById('collect-modal').classList.add('hidden');
+    Orders.collectOrderId = null;
+  }
+
+  async function saveCollectPayment() {
+    const lang    = App.clinic?.language || 'ar';
+    const btn     = document.getElementById('collect-save-btn');
+    const errEl   = document.getElementById('collect-error');
+    const amount  = parseFloat(document.getElementById('collect-amount').value);
+    const method  = document.getElementById('collect-method').value;
+    const notes   = document.getElementById('collect-notes').value.trim() || null;
+
+    errEl.classList.add('hidden');
+
+    if (!amount || amount <= 0) {
+      errEl.textContent = lang === 'ar' ? 'المبلغ يجب أن يكون أكبر من صفر' : 'Amount must be greater than 0';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (amount > Orders.collectRemaining + 0.01) {
+      errEl.textContent = lang === 'ar'
+        ? `المبلغ يتجاوز المتبقي (${Orders.collectRemaining.toLocaleString()} IQD)`
+        : `Amount exceeds remaining (${Orders.collectRemaining.toLocaleString()} IQD)`;
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    setButtonLoading(btn, true);
+
+    // 1. Load current order
+    const { data: order, error: oErr } = await sb
+      .from('orders')
+      .select('id, paid, remaining, total, prescription_id')
+      .eq('id', Orders.collectOrderId)
+      .single();
+
+    if (oErr || !order) {
+      errEl.textContent = lang === 'ar' ? 'حدث خطأ' : 'Error loading order';
+      errEl.classList.remove('hidden');
+      setButtonLoading(btn, false);
+      return;
+    }
+
+    const newPaid      = (order.paid || 0) + amount;
+    const newRemaining = Math.max(0, (order.total || 0) - newPaid);
+    const newStatus    = newRemaining <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
+
+    // 2. Update order
+    const { error: updateErr } = await sb.from('orders').update({
+      paid:           newPaid,
+      remaining:      newRemaining,
+      payment_status: newStatus,
+      payment_method: method,
+    }).eq('id', order.id);
+
+    if (updateErr) {
+      errEl.textContent = lang === 'ar' ? 'فشل تحديث الطلب' : 'Failed to update order';
+      errEl.classList.remove('hidden');
+      setButtonLoading(btn, false);
+      return;
+    }
+
+    // 3. Insert payment record
+    await sb.from('payments').insert({
+      clinic_id:       App.clinic.id,
+      patient_id:      Orders.collectPatientId,
+      prescription_id: order.prescription_id,
+      amount,
+      payment_method:  method,
+      payment_date:    new Date().toISOString().slice(0,10),
+      notes,
+      created_by:      App.clinicUser.id,
+    }).catch(() => {});
+
+    logAudit('payment_collect', 'orders', order.id, { remaining: Orders.collectRemaining }, { paid: amount, new_status: newStatus });
+
+    showToast(
+      lang === 'ar' ? 'تم تسجيل الدفعة بنجاح' : 'Payment recorded successfully',
+      'success'
+    );
+
+    setButtonLoading(btn, false);
+    document.getElementById('collect-modal').classList.add('hidden');
+    Orders.collectOrderId = null;
+
+    // Refresh list + dashboard
+    loadOrders();
+    if (App.currentPage === 'dashboard') loadDashboard();
+  }
 
   document.addEventListener('DOMContentLoaded', init);
   </script>
