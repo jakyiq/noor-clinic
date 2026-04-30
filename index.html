@@ -2484,7 +2484,45 @@
           </div>
         </div>
       </div>
-      <div id="page-followup"  class="page-view"><div class="empty-state"><i data-lucide="calendar-check"></i><p>Follow-Up</p></div></div>
+      <!-- ═══════════════════════════════════
+           FOLLOW-UP PAGE
+      ═══════════════════════════════════ -->
+      <div id="page-followup" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="followup-search" class="search-input" oninput="debounceFollowupSearch(this.value)" />
+            </div>
+            <!-- Filter: overdue / upcoming / all -->
+            <select id="followup-filter" class="form-control" style="width:auto;min-width:140px" onchange="loadFollowups()">
+              <option value="all"><span class="ar">الكل</span></option>
+              <option value="overdue"><span class="ar">متأخر</span></option>
+              <option value="today"><span class="ar">اليوم</span></option>
+              <option value="week"><span class="ar">هذا الأسبوع</span></option>
+            </select>
+          </div>
+        </div>
+        <div class="patients-stats" id="followup-stats"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
+                <th><span class="ar">الهاتف</span><span class="en" style="display:none">Phone</span></th>
+                <th><span class="ar">تاريخ الزيارة</span><span class="en" style="display:none">Visit Date</span></th>
+                <th><span class="ar">موعد المتابعة</span><span class="en" style="display:none">Follow-Up Date</span></th>
+                <th><span class="ar">الحالة</span><span class="en" style="display:none">Status</span></th>
+                <th><span class="ar">الطبيب</span><span class="en" style="display:none">Doctor</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="followup-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
       <!-- ═══════════════════════════════════
            LENS INVENTORY PAGE
       ═══════════════════════════════════ -->
@@ -2587,7 +2625,69 @@
           </table>
         </div>
       </div>
-      <div id="page-restock"   class="page-view"><div class="empty-state"><i data-lucide="package-open"></i><p>Restock</p></div></div>
+      <!-- ═══════════════════════════════════
+           RESTOCK ALERTS PAGE
+      ═══════════════════════════════════ -->
+      <div id="page-restock" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" id="restock-tab-lenses" onclick="switchRestockTab('lenses')" style="font-weight:600">
+                <i data-lucide="circle-dot"></i>
+                <span class="ar">عدسات</span><span class="en" style="display:none">Lenses</span>
+              </button>
+              <button class="btn btn-ghost btn-sm" id="restock-tab-frames" onclick="switchRestockTab('frames')">
+                <i data-lucide="glasses"></i>
+                <span class="ar">إطارات</span><span class="en" style="display:none">Frames</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Low-stock count badge -->
+        <div id="restock-summary" class="patients-stats" style="margin-bottom:16px"></div>
+        <!-- Lens restock table -->
+        <div id="restock-lenses-wrap">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
+                  <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
+                  <th>SPH / CYL</th>
+                  <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
+                  <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
+                  <th><span class="ar">حد التنبيه</span><span class="en" style="display:none">Alert At</span></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="restock-lenses-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Frame restock table -->
+        <div id="restock-frames-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
+                  <th><span class="ar">الموديل</span><span class="en" style="display:none">Model</span></th>
+                  <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
+                  <th><span class="ar">اللون</span><span class="en" style="display:none">Color</span></th>
+                  <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
+                  <th><span class="ar">حد التنبيه</span><span class="en" style="display:none">Alert At</span></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="restock-frames-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div id="page-ledger"    class="page-view"><div class="empty-state"><i data-lucide="receipt"></i><p>Ledger</p></div></div>
       <div id="page-debtors"   class="page-view"><div class="empty-state"><i data-lucide="wallet"></i><p>Debtors</p></div></div>
       <div id="page-reports"   class="page-view"><div class="empty-state"><i data-lucide="bar-chart-2"></i><p>Reports</p></div></div>
@@ -3261,6 +3361,8 @@
       if (page === 'patients')  { Patients.page = 1; loadPatients(); }
       if (page === 'lenses')    loadLenses();
       if (page === 'frames')    loadFrames();
+      if (page === 'restock')   loadRestock();
+      if (page === 'followup')  loadFollowups();
     }
   }
 
@@ -5239,6 +5341,203 @@
     showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
     document.getElementById('frame-modal').classList.add('hidden');
     loadFrames();
+  }
+
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 8 — RESTOCK ALERTS + FOLLOW-UP PAGES
+  // ═══════════════════════════════════════════════════
+
+  const Restock  = { tab: 'lenses' };
+  const Followup = { searchTimer: null };
+
+  // ── RESTOCK ─────────────────────────────────────────
+
+  function switchRestockTab(tab) {
+    Restock.tab = tab;
+    document.getElementById('restock-lenses-wrap').style.display = tab === 'lenses' ? '' : 'none';
+    document.getElementById('restock-frames-wrap').style.display = tab === 'frames' ? '' : 'none';
+    document.getElementById('restock-tab-lenses').className = 'btn btn-sm ' + (tab === 'lenses' ? 'btn-secondary' : 'btn-ghost');
+    document.getElementById('restock-tab-frames').className = 'btn btn-sm ' + (tab === 'frames' ? 'btn-secondary' : 'btn-ghost');
+    lucide.createIcons();
+  }
+
+  async function loadRestock() {
+    const lang = App.clinic?.language || 'ar';
+    const cid  = App.clinic?.id;
+
+    // ── Lenses low-stock ──
+    const { data: lenses } = await sb.from('lenses')
+      .select('id, brand, lens_type, material, sphere, cylinder, quantity, restock_level, sell_price')
+      .eq('clinic_id', cid)
+      .order('quantity', { ascending: true });
+
+    const lowLenses = (lenses || []).filter(l => l.quantity <= (l.restock_level ?? 2));
+
+    // ── Frames low-stock ──
+    const { data: frames } = await sb.from('frames')
+      .select('id, brand, model, frame_type, color, quantity, restock_level, sell_price')
+      .eq('clinic_id', cid)
+      .order('quantity', { ascending: true });
+
+    const lowFrames = (frames || []).filter(f => f.quantity <= (f.restock_level ?? 1));
+
+    // Stats
+    const totalLow = lowLenses.length + lowFrames.length;
+    const outOfStock = [...lowLenses, ...lowFrames].filter(x => x.quantity === 0).length;
+    document.getElementById('restock-summary').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${totalLow > 0 ? 'var(--danger)' : 'var(--success)'}">${totalLow}</span><span class="pt-stat-lbl"><span class="ar">إجمالي التنبيهات</span><span class="en" style="display:none">Total Alerts</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${outOfStock > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${outOfStock}</span><span class="pt-stat-lbl"><span class="ar">نفد المخزون</span><span class="en" style="display:none">Out of Stock</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${lowLenses.length}</span><span class="pt-stat-lbl"><span class="ar">عدسات</span><span class="en" style="display:none">Lenses</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${lowFrames.length}</span><span class="pt-stat-lbl"><span class="ar">إطارات</span><span class="en" style="display:none">Frames</span></span></div>
+    `;
+
+    // Update topbar alert badge visibility
+    const alertBtn = document.getElementById('restock-alert-btn');
+    if (alertBtn) alertBtn.style.display = totalLow > 0 ? '' : 'none';
+
+    // Render lens table
+    const lTbody = document.getElementById('restock-lenses-tbody');
+    if (!lowLenses.length) {
+      lTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="check-circle"></i><p>${lang === 'ar' ? 'لا توجد عدسات منخفضة المخزون' : 'No low-stock lenses'}</p></div></td></tr>`;
+    } else {
+      lTbody.innerHTML = lowLenses.map(l => {
+        const qtyClass = l.quantity === 0 ? 'badge-danger' : 'badge-warning';
+        const sph = (l.sphere >= 0 ? '+' : '') + Number(l.sphere).toFixed(2);
+        const cyl = Number(l.cylinder || 0).toFixed(2);
+        return `<tr>
+          <td><span style="font-weight:500">${l.brand || '—'}</span></td>
+          <td><span class="badge badge-info">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type}</span></td>
+          <td class="font-mono">${sph} / ${cyl}</td>
+          <td>${l.material || '—'}</td>
+          <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
+          <td style="color:var(--text-muted)">${l.restock_level ?? 2}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')">
+              <i data-lucide="pencil"></i>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Render frame table
+    const fTbody = document.getElementById('restock-frames-tbody');
+    if (!lowFrames.length) {
+      fTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="check-circle"></i><p>${lang === 'ar' ? 'لا توجد إطارات منخفضة المخزون' : 'No low-stock frames'}</p></div></td></tr>`;
+    } else {
+      fTbody.innerHTML = lowFrames.map(f => {
+        const qtyClass = f.quantity === 0 ? 'badge-danger' : 'badge-warning';
+        const typeLabel = FRAME_TYPE_LABELS[f.frame_type] || '';
+        return `<tr>
+          <td><span style="font-weight:500">${f.brand || '—'}</span></td>
+          <td>${f.model || '—'}</td>
+          <td>${typeLabel ? `<span class="badge badge-info">${typeLabel}</span>` : '—'}</td>
+          <td>${f.color || '—'}</td>
+          <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
+          <td style="color:var(--text-muted)">${f.restock_level ?? 1}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')">
+              <i data-lucide="pencil"></i>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  // ── FOLLOW-UP ────────────────────────────────────────
+
+  function debounceFollowupSearch(val) {
+    clearTimeout(Followup.searchTimer);
+    Followup.searchTimer = setTimeout(() => loadFollowups(), 350);
+  }
+
+  async function loadFollowups() {
+    const lang   = App.clinic?.language || 'ar';
+    const cid    = App.clinic?.id;
+    const search = document.getElementById('followup-search')?.value?.trim() || '';
+    const filter = document.getElementById('followup-filter')?.value || 'all';
+    const tbody  = document.getElementById('followup-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().split('T')[0];
+    const weekEnd  = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekStr  = weekEnd.toISOString().split('T')[0];
+
+    // Join prescriptions → patients → doctors where checkup = true and next_visit_date is set
+    let query = sb.from('prescriptions')
+      .select('id, exam_date, next_visit_date, patient_id, doctor_id, patients(full_name, phone), doctors(full_name)')
+      .eq('clinic_id', cid)
+      .eq('checkup', true)
+      .not('next_visit_date', 'is', null)
+      .order('next_visit_date', { ascending: true });
+
+    if (filter === 'overdue') query = query.lt('next_visit_date', todayStr);
+    if (filter === 'today')   query = query.eq('next_visit_date', todayStr);
+    if (filter === 'week')    query = query.gte('next_visit_date', todayStr).lte('next_visit_date', weekStr);
+
+    const { data, error } = await query.limit(200);
+    let rows = data || [];
+
+    // Client-side search by patient name/phone
+    if (search) {
+      const s = search.toLowerCase();
+      rows = rows.filter(r =>
+        r.patients?.full_name?.toLowerCase().includes(s) ||
+        r.patients?.phone?.includes(s)
+      );
+    }
+
+    // Stats
+    const overdue  = rows.filter(r => r.next_visit_date < todayStr).length;
+    const todayCount = rows.filter(r => r.next_visit_date === todayStr).length;
+    document.getElementById('followup-stats').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val">${rows.length}</span><span class="pt-stat-lbl"><span class="ar">إجمالي المتابعات</span><span class="en" style="display:none">Total</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${overdue > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${overdue}</span><span class="pt-stat-lbl"><span class="ar">متأخر</span><span class="en" style="display:none">Overdue</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${todayCount > 0 ? 'var(--warning)' : 'var(--text-muted)'}">${todayCount}</span><span class="pt-stat-lbl"><span class="ar">اليوم</span><span class="en" style="display:none">Today</span></span></div>
+    `;
+    applyLanguage(lang, false);
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="calendar-check"></i><p>${lang === 'ar' ? 'لا توجد متابعات' : 'No follow-ups found'}</p></div></td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const nextDate = r.next_visit_date;
+      const isPast   = nextDate < todayStr;
+      const isToday  = nextDate === todayStr;
+      const statusBadge = isPast
+        ? `<span class="badge badge-danger"><span class="ar">متأخر</span><span class="en" style="display:none">Overdue</span></span>`
+        : isToday
+          ? `<span class="badge badge-warning"><span class="ar">اليوم</span><span class="en" style="display:none">Today</span></span>`
+          : `<span class="badge badge-success"><span class="ar">قادم</span><span class="en" style="display:none">Upcoming</span></span>`;
+
+      const fmtDate = d => d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB') : '—';
+
+      return `<tr>
+        <td style="font-weight:500">${r.patients?.full_name || '—'}</td>
+        <td style="color:var(--text-muted)">${r.patients?.phone || '—'}</td>
+        <td style="color:var(--text-muted)">${fmtDate(r.exam_date)}</td>
+        <td style="font-weight:600;color:${isPast ? 'var(--danger)' : isToday ? 'var(--warning)' : 'var(--text-primary)'}">${fmtDate(r.next_visit_date)}</td>
+        <td>${statusBadge}</td>
+        <td style="color:var(--text-muted)">${r.doctors?.full_name || '—'}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openRxModal('${r.patient_id}', '${r.id}')" title="${lang === 'ar' ? 'فتح الوصفة' : 'Open Rx'}">
+            <i data-lucide="file-text"></i>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    applyLanguage(lang, false);
+    lucide.createIcons();
   }
 
   // Expose openRxModal globally (called from patient table)
