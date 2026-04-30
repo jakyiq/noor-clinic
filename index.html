@@ -3968,7 +3968,7 @@
     { key: 'photochromic', en: 'Photochromic Filter' },
     { key: 'photo_blue',   en: 'Photochromic Blue Light Cut' },
     { key: 'photo_green',  en: 'Photochromic Green Light Cut' },
-    { key: 'photo_clear',  en: 'Photochromic Clear (White)' },
+    { key: 'photo_clear',  en: 'Clear / White' },
     { key: 'polarized',    en: 'Polarized' },
     { key: 'tint',         en: 'Tint' },
   ];
@@ -4622,8 +4622,11 @@
     }
 
     if (rxError) {
-      errEl.textContent = lang === 'ar' ? 'حدث خطأ في حفظ الوصفة' : 'Error saving prescription';
+      const detail = rxError.message || rxError.details || rxError.hint || '';
+      errEl.textContent = (lang === 'ar' ? 'حدث خطأ في حفظ الوصفة' : 'Error saving prescription')
+        + (detail ? ' — ' + detail : '');
       errEl.classList.remove('hidden');
+      console.error('saveRx error:', rxError);
       setButtonLoading(btn, false);
       return;
     }
