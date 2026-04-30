@@ -4694,14 +4694,19 @@
         .select('id').eq('prescription_id', rxId).maybeSingle();
 
       if (!existingPmt) {
+        // Get the order id (needed for payments.order_id)
+        const { data: linkedOrder } = await sb.from('orders')
+          .select('id').eq('prescription_id', rxId).maybeSingle();
+
         await sb.from('payments').insert({
-          clinic_id:      App.clinic.id,
-          patient_id:     Rx.patientId,
+          clinic_id:       App.clinic.id,
+          patient_id:      Rx.patientId,
           prescription_id: rxId,
-          amount:         paid,
-          payment_method: document.getElementById('rx-payment-method').value,
-          payment_date:   examDate,
-          created_by:     App.clinicUser.id,
+          order_id:        linkedOrder?.id || null,
+          amount:          paid,
+          payment_method:  document.getElementById('rx-payment-method').value,
+          payment_date:    examDate,
+          created_by:      App.clinicUser.id,
         }).catch(() => {});
       }
     }
