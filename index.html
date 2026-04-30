@@ -2744,7 +2744,27 @@
                       <input type="text" id="rx-frame-name" class="form-control" />
                     </div>
                     <div class="form-group">
-                      <label class="form-label"><span class="ar">سعر الإطار (IQD)</span><span class="en" style="display:none">Frame Price (IQD)</span></label>
+                      <label class="form-label"><span class="ar">نوع الإطار</span><span class="en" style="display:none">Frame Type</span></label>
+                      <select id="rx-frame-type" class="form-control">
+                        <option value="">—</option>
+                        <option value="metal">Metal</option>
+                        <option value="titanium">Titanium</option>
+                        <option value="plastic">Plastic</option>
+                        <option value="acetate">Acetate</option>
+                        <option value="rimless">Rimless</option>
+                        <option value="semi_rimless">Semi-Rimless</option>
+                        <option value="supra">Supra</option>
+                        <option value="sunglasses">Sunglasses</option>
+                        <option value="sports">Sports</option>
+                        <option value="kids">Kids</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label"><span class="ar">سعر التكلفة (IQD)</span><span class="en" style="display:none">Cost Price (IQD)</span></label>
+                      <input type="number" id="rx-frame-cost-price" class="form-control" placeholder="0" min="0" />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label"><span class="ar">سعر البيع (IQD)</span><span class="en" style="display:none">Sell Price (IQD)</span></label>
                       <input type="number" id="rx-frame-price" class="form-control" placeholder="0" min="0" oninput="recalcTotal()" />
                     </div>
                   </div>
@@ -4088,7 +4108,7 @@
       'rx-exam-date','rx-exam-notes','rx-next-visit',
       'rx-od-sph','rx-od-cyl','rx-od-axis','rx-od-add','rx-od-ipd','rx-od-va','rx-od-bcva',
       'rx-os-sph','rx-os-cyl','rx-os-axis','rx-os-add','rx-os-ipd','rx-os-va','rx-os-bcva',
-      'rx-lens-price','rx-frame-name','rx-frame-price',
+      'rx-lens-price','rx-frame-name','rx-frame-price','rx-frame-cost-price',
       'rx-consult-fee','rx-discount','rx-paid',
       // prev rx fields
       'prev-od-sph','prev-od-cyl','prev-od-axis','prev-od-add','prev-od-va',
@@ -4100,6 +4120,7 @@
     });
     document.getElementById('rx-lens-type').value      = '';
     document.getElementById('rx-lens-material').value  = '';
+    document.getElementById('rx-frame-type').value     = '';
     document.getElementById('rx-payment-method').value = 'cash';
     document.getElementById('rx-checkup').checked      = false;
     document.getElementById('rx-next-visit-group').style.display = 'none';
@@ -4144,25 +4165,20 @@
   // ── Load doctors into select ────────────────────
   async function loadDoctorsSelect() {
     const { data } = await sb
-      .from('clinic_users')
+      .from('doctors')
       .select('id, full_name')
       .eq('clinic_id', App.clinic.id)
-      .in('role', ['admin','doctor'])
       .eq('is_active', true);
 
     const sel = document.getElementById('rx-doctor');
     const lang = App.clinic?.language || 'ar';
     sel.innerHTML = `<option value="">— ${lang === 'ar' ? 'اختر' : 'Select'}</option>`;
-    (data || []).forEach(u => {
+    (data || []).forEach(d => {
       const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.full_name;
+      opt.value = d.id;
+      opt.textContent = d.full_name;
       sel.appendChild(opt);
     });
-    // Default to current user if doctor/admin
-    if (['admin','doctor'].includes(App.clinicUser?.role)) {
-      sel.value = App.clinicUser.id;
-    }
   }
 
   // ── Load Rx history sidebar ─────────────────────
@@ -4255,7 +4271,9 @@
     const order = Array.isArray(rx.orders) ? rx.orders[0] : rx.orders;
     if (order) {
       fill('rx-lens-price',   order.lens_price);
-      fill('rx-frame-price',  order.frame_price);
+      fill('rx-frame-price',      order.frame_price);
+      fill('rx-frame-cost-price', order.frame_cost_price);
+      if (order.frame_type) document.getElementById('rx-frame-type').value = order.frame_type || '';
       fill('rx-consult-fee',  order.consult_fee);
       fill('rx-discount',     order.discount);
       fill('rx-paid',         order.paid);
@@ -4495,9 +4513,9 @@
     if (!query || query.length < 2) { container.innerHTML = ''; return; }
 
     const { data, error } = await sb.from('frames')
-      .select('id, name, brand, color, size, quantity, price')
+      .select('id, model, brand, color, size, material, frame_type, quantity, sell_price, cost_price')
       .eq('clinic_id', App.clinic.id)
-      .or(`name.ilike.%${query}%,brand.ilike.%${query}%,color.ilike.%${query}%`)
+      .or(`model.ilike.%${query}%,brand.ilike.%${query}%,color.ilike.%${query}%`)
       .order('quantity', { ascending: false })
       .limit(6);
 
@@ -4508,15 +4526,15 @@
     }
 
     container.innerHTML = data.map(f => {
-      const name     = [f.brand, f.name].filter(Boolean).join(' — ');
-      const meta     = [f.color, f.size].filter(Boolean).join(' · ');
+      const name     = [f.brand, f.model].filter(Boolean).join(' — ');
+      const meta     = [f.frame_type, f.material, f.color, f.size].filter(Boolean).join(' · ');
       const qtyClass = f.quantity > 3 ? 'ok' : f.quantity > 0 ? 'low' : 'out';
       const qtyTxt   = lang === 'ar' ? `ك: ${f.quantity}` : `Qty: ${f.quantity}`;
       const selected = Rx.selectedFrameId === f.id ? 'selected' : '';
-      const priceStr = f.price ? f.price.toLocaleString() + ' IQD' : '';
+      const priceStr = f.sell_price ? Number(f.sell_price).toLocaleString() + ' IQD' : '';
 
       return `
-        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.price || 0})">
+        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0}, ${f.cost_price || 0})">
           <div class="frame-match-info">
             <div class="frame-match-name">${name}</div>
             <div class="frame-match-meta">${meta}${priceStr ? ' · ' + priceStr : ''}</div>
@@ -4526,10 +4544,11 @@
     }).join('');
   }
 
-  function selectFrame(frameId, frameName, price) {
+  function selectFrame(frameId, frameName, sellPrice, costPrice) {
     Rx.selectedFrameId = frameId;
-    document.getElementById('rx-frame-name').value  = frameName;
-    document.getElementById('rx-frame-price').value = price || '';
+    document.getElementById('rx-frame-name').value       = frameName;
+    document.getElementById('rx-frame-price').value      = sellPrice || '';
+    document.getElementById('rx-frame-cost-price').value = costPrice || '';
     // Highlight selected card
     document.querySelectorAll('.frame-match-card').forEach(c => c.classList.remove('selected'));
     event.currentTarget.classList.add('selected');
@@ -4592,7 +4611,7 @@
     const rxPayload = {
       clinic_id:      App.clinic.id,
       patient_id:     Rx.patientId,
-      doctor_id:      document.getElementById('rx-doctor').value || null,
+      doctor_id:      document.getElementById('rx-doctor').value.trim() || null,
       exam_date:      examDate,
       notes:          document.getElementById('rx-exam-notes').value.trim() || null,
       checkup:        document.getElementById('rx-checkup').checked,
@@ -4647,6 +4666,8 @@
       prescription_id: rxId,
       lens_id:        Rx.selectedLensId || null,
       frame_id:       Rx.selectedFrameId || null,
+      frame_type:     document.getElementById('rx-frame-type').value || null,
+      frame_cost_price: floatOrNull('rx-frame-cost-price') || 0,
       lens_price:     lensPrice,
       frame_price:    framePrice,
       consult_fee:    consult,
@@ -4711,7 +4732,7 @@
       }
     }
 
-    logAudit(Rx.editingId ? 'rx_update' : 'rx_create', 'prescriptions', rxId);
+    logAudit(Rx.editingId ? 'prescription_update' : 'prescription_create', 'prescriptions', rxId);
     showToast(
       lang === 'ar' ? 'تم حفظ الوصفة بنجاح' : 'Prescription saved',
       'success'
@@ -4736,7 +4757,7 @@
       if (error) {
         showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error');
       } else {
-        logAudit('rx_delete', 'prescriptions', Rx.editingId);
+        logAudit('prescription_delete', 'prescriptions', Rx.editingId);
         showToast(lang === 'ar' ? 'تم حذف الوصفة' : 'Prescription deleted', 'success');
         closeRxConfirm();
         document.getElementById('rx-modal').classList.add('hidden');
