@@ -2485,8 +2485,108 @@
         </div>
       </div>
       <div id="page-followup"  class="page-view"><div class="empty-state"><i data-lucide="calendar-check"></i><p>Follow-Up</p></div></div>
-      <div id="page-lenses"    class="page-view"><div class="empty-state"><i data-lucide="circle-dot"></i><p>Lenses</p></div></div>
-      <div id="page-frames"    class="page-view"><div class="empty-state"><i data-lucide="glasses"></i><p>Frames</p></div></div>
+      <!-- ═══════════════════════════════════
+           LENS INVENTORY PAGE
+      ═══════════════════════════════════ -->
+      <div id="page-lenses" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="lenses-search" class="search-input" oninput="debounceLensSearch(this.value)" />
+            </div>
+            <select id="lenses-filter-type" class="form-control" style="width:auto;min-width:130px" onchange="loadLenses()">
+              <option value=""><span class="ar">كل الأنواع</span><span class="en">All Types</span></option>
+              <option value="single">Single Vision</option>
+              <option value="bifocal">Bifocal</option>
+              <option value="progressive">Progressive</option>
+              <option value="plano">Plano</option>
+            </select>
+          </div>
+          <div class="page-toolbar-end">
+            <button class="btn btn-primary btn-sm" onclick="openLensModal()">
+              <i data-lucide="plus"></i>
+              <span class="ar">عدسة جديدة</span><span class="en" style="display:none">Add Lens</span>
+            </button>
+          </div>
+        </div>
+        <!-- Stats strip -->
+        <div class="patients-stats" id="lens-stats"></div>
+        <!-- Table -->
+        <div class="table-wrap">
+          <table id="lenses-table">
+            <thead>
+              <tr>
+                <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
+                <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
+                <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
+                <th><span class="ar">الطلاء</span><span class="en" style="display:none">Coating</span></th>
+                <th>SPH</th>
+                <th>CYL</th>
+                <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
+                <th><span class="ar">سعر البيع</span><span class="en" style="display:none">Sell Price</span></th>
+                <th><span class="ar">سعر الشراء</span><span class="en" style="display:none">Cost Price</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lenses-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- ═══════════════════════════════════
+           FRAMES INVENTORY PAGE
+      ═══════════════════════════════════ -->
+      <div id="page-frames" class="page-view">
+        <div class="page-toolbar">
+          <div class="page-toolbar-start">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="search" id="frames-search" class="search-input" oninput="debounceFramePageSearch(this.value)" />
+            </div>
+            <select id="frames-filter-type" class="form-control" style="width:auto;min-width:130px" onchange="loadFrames()">
+              <option value=""><span class="ar">كل الأنواع</span><span class="en">All Types</span></option>
+              <option value="full_rim">Full Rim</option>
+              <option value="half_rim">Half Rim</option>
+              <option value="rimless">Rimless</option>
+              <option value="sunglass">Sunglass</option>
+              <option value="kids">Kids</option>
+              <option value="sport">Sport</option>
+            </select>
+          </div>
+          <div class="page-toolbar-end">
+            <button class="btn btn-primary btn-sm" onclick="openFrameModal()">
+              <i data-lucide="plus"></i>
+              <span class="ar">إطار جديد</span><span class="en" style="display:none">Add Frame</span>
+            </button>
+          </div>
+        </div>
+        <!-- Stats strip -->
+        <div class="patients-stats" id="frame-stats"></div>
+        <!-- Table -->
+        <div class="table-wrap">
+          <table id="frames-table">
+            <thead>
+              <tr>
+                <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
+                <th><span class="ar">الموديل</span><span class="en" style="display:none">Model</span></th>
+                <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
+                <th><span class="ar">اللون</span><span class="en" style="display:none">Color</span></th>
+                <th><span class="ar">المقاس</span><span class="en" style="display:none">Size</span></th>
+                <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
+                <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
+                <th><span class="ar">سعر البيع</span><span class="en" style="display:none">Sell Price</span></th>
+                <th><span class="ar">سعر الشراء</span><span class="en" style="display:none">Cost Price</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="frames-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
       <div id="page-restock"   class="page-view"><div class="empty-state"><i data-lucide="package-open"></i><p>Restock</p></div></div>
       <div id="page-ledger"    class="page-view"><div class="empty-state"><i data-lucide="receipt"></i><p>Ledger</p></div></div>
       <div id="page-debtors"   class="page-view"><div class="empty-state"><i data-lucide="wallet"></i><p>Debtors</p></div></div>
@@ -2744,27 +2844,7 @@
                       <input type="text" id="rx-frame-name" class="form-control" />
                     </div>
                     <div class="form-group">
-                      <label class="form-label"><span class="ar">نوع الإطار</span><span class="en" style="display:none">Frame Type</span></label>
-                      <select id="rx-frame-type" class="form-control">
-                        <option value="">—</option>
-                        <option value="metal">Metal</option>
-                        <option value="titanium">Titanium</option>
-                        <option value="plastic">Plastic</option>
-                        <option value="acetate">Acetate</option>
-                        <option value="rimless">Rimless</option>
-                        <option value="semi_rimless">Semi-Rimless</option>
-                        <option value="supra">Supra</option>
-                        <option value="sunglasses">Sunglasses</option>
-                        <option value="sports">Sports</option>
-                        <option value="kids">Kids</option>
-                      </select>
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label"><span class="ar">سعر التكلفة (IQD)</span><span class="en" style="display:none">Cost Price (IQD)</span></label>
-                      <input type="number" id="rx-frame-cost-price" class="form-control" placeholder="0" min="0" />
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label"><span class="ar">سعر البيع (IQD)</span><span class="en" style="display:none">Sell Price (IQD)</span></label>
+                      <label class="form-label"><span class="ar">سعر الإطار (IQD)</span><span class="en" style="display:none">Frame Price (IQD)</span></label>
                       <input type="number" id="rx-frame-price" class="form-control" placeholder="0" min="0" oninput="recalcTotal()" />
                     </div>
                   </div>
@@ -3179,6 +3259,8 @@
     if (App.clinic) {
       if (page === 'dashboard') loadDashboard();
       if (page === 'patients')  { Patients.page = 1; loadPatients(); }
+      if (page === 'lenses')    loadLenses();
+      if (page === 'frames')    loadFrames();
     }
   }
 
@@ -3988,7 +4070,7 @@
     { key: 'photochromic', en: 'Photochromic Filter' },
     { key: 'photo_blue',   en: 'Photochromic Blue Light Cut' },
     { key: 'photo_green',  en: 'Photochromic Green Light Cut' },
-    { key: 'photo_clear',  en: 'Clear / White' },
+    { key: 'photo_clear',  en: 'Photochromic Clear (White)' },
     { key: 'polarized',    en: 'Polarized' },
     { key: 'tint',         en: 'Tint' },
   ];
@@ -4108,7 +4190,7 @@
       'rx-exam-date','rx-exam-notes','rx-next-visit',
       'rx-od-sph','rx-od-cyl','rx-od-axis','rx-od-add','rx-od-ipd','rx-od-va','rx-od-bcva',
       'rx-os-sph','rx-os-cyl','rx-os-axis','rx-os-add','rx-os-ipd','rx-os-va','rx-os-bcva',
-      'rx-lens-price','rx-frame-name','rx-frame-price','rx-frame-cost-price',
+      'rx-lens-price','rx-frame-name','rx-frame-price',
       'rx-consult-fee','rx-discount','rx-paid',
       // prev rx fields
       'prev-od-sph','prev-od-cyl','prev-od-axis','prev-od-add','prev-od-va',
@@ -4120,7 +4202,6 @@
     });
     document.getElementById('rx-lens-type').value      = '';
     document.getElementById('rx-lens-material').value  = '';
-    document.getElementById('rx-frame-type').value     = '';
     document.getElementById('rx-payment-method').value = 'cash';
     document.getElementById('rx-checkup').checked      = false;
     document.getElementById('rx-next-visit-group').style.display = 'none';
@@ -4165,20 +4246,25 @@
   // ── Load doctors into select ────────────────────
   async function loadDoctorsSelect() {
     const { data } = await sb
-      .from('doctors')
+      .from('clinic_users')
       .select('id, full_name')
       .eq('clinic_id', App.clinic.id)
+      .in('role', ['admin','doctor'])
       .eq('is_active', true);
 
     const sel = document.getElementById('rx-doctor');
     const lang = App.clinic?.language || 'ar';
     sel.innerHTML = `<option value="">— ${lang === 'ar' ? 'اختر' : 'Select'}</option>`;
-    (data || []).forEach(d => {
+    (data || []).forEach(u => {
       const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.full_name;
+      opt.value = u.id;
+      opt.textContent = u.full_name;
       sel.appendChild(opt);
     });
+    // Default to current user if doctor/admin
+    if (['admin','doctor'].includes(App.clinicUser?.role)) {
+      sel.value = App.clinicUser.id;
+    }
   }
 
   // ── Load Rx history sidebar ─────────────────────
@@ -4271,9 +4357,7 @@
     const order = Array.isArray(rx.orders) ? rx.orders[0] : rx.orders;
     if (order) {
       fill('rx-lens-price',   order.lens_price);
-      fill('rx-frame-price',      order.frame_price);
-      fill('rx-frame-cost-price', order.frame_cost_price);
-      if (order.frame_type) document.getElementById('rx-frame-type').value = order.frame_type || '';
+      fill('rx-frame-price',  order.frame_price);
       fill('rx-consult-fee',  order.consult_fee);
       fill('rx-discount',     order.discount);
       fill('rx-paid',         order.paid);
@@ -4513,9 +4597,9 @@
     if (!query || query.length < 2) { container.innerHTML = ''; return; }
 
     const { data, error } = await sb.from('frames')
-      .select('id, model, brand, color, size, material, frame_type, quantity, sell_price, cost_price')
+      .select('id, brand, model, frame_type, color, size, quantity, sell_price')
       .eq('clinic_id', App.clinic.id)
-      .or(`model.ilike.%${query}%,brand.ilike.%${query}%,color.ilike.%${query}%`)
+      .or(`brand.ilike.%${query}%,model.ilike.%${query}%,color.ilike.%${query}%`)
       .order('quantity', { ascending: false })
       .limit(6);
 
@@ -4527,14 +4611,14 @@
 
     container.innerHTML = data.map(f => {
       const name     = [f.brand, f.model].filter(Boolean).join(' — ');
-      const meta     = [f.frame_type, f.material, f.color, f.size].filter(Boolean).join(' · ');
+      const meta     = [f.color, f.size].filter(Boolean).join(' · ');
       const qtyClass = f.quantity > 3 ? 'ok' : f.quantity > 0 ? 'low' : 'out';
       const qtyTxt   = lang === 'ar' ? `ك: ${f.quantity}` : `Qty: ${f.quantity}`;
       const selected = Rx.selectedFrameId === f.id ? 'selected' : '';
-      const priceStr = f.sell_price ? Number(f.sell_price).toLocaleString() + ' IQD' : '';
+      const priceStr = f.sell_price ? f.sell_price.toLocaleString() + ' IQD' : '';
 
       return `
-        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0}, ${f.cost_price || 0})">
+        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0})">
           <div class="frame-match-info">
             <div class="frame-match-name">${name}</div>
             <div class="frame-match-meta">${meta}${priceStr ? ' · ' + priceStr : ''}</div>
@@ -4544,11 +4628,10 @@
     }).join('');
   }
 
-  function selectFrame(frameId, frameName, sellPrice, costPrice) {
+  function selectFrame(frameId, frameName, price) {
     Rx.selectedFrameId = frameId;
-    document.getElementById('rx-frame-name').value       = frameName;
-    document.getElementById('rx-frame-price').value      = sellPrice || '';
-    document.getElementById('rx-frame-cost-price').value = costPrice || '';
+    document.getElementById('rx-frame-name').value  = frameName;
+    document.getElementById('rx-frame-price').value = price || '';
     // Highlight selected card
     document.querySelectorAll('.frame-match-card').forEach(c => c.classList.remove('selected'));
     event.currentTarget.classList.add('selected');
@@ -4611,7 +4694,7 @@
     const rxPayload = {
       clinic_id:      App.clinic.id,
       patient_id:     Rx.patientId,
-      doctor_id:      document.getElementById('rx-doctor').value.trim() || null,
+      doctor_id:      document.getElementById('rx-doctor').value || null,
       exam_date:      examDate,
       notes:          document.getElementById('rx-exam-notes').value.trim() || null,
       checkup:        document.getElementById('rx-checkup').checked,
@@ -4641,11 +4724,8 @@
     }
 
     if (rxError) {
-      const detail = rxError.message || rxError.details || rxError.hint || '';
-      errEl.textContent = (lang === 'ar' ? 'حدث خطأ في حفظ الوصفة' : 'Error saving prescription')
-        + (detail ? ' — ' + detail : '');
+      errEl.textContent = lang === 'ar' ? 'حدث خطأ في حفظ الوصفة' : 'Error saving prescription';
       errEl.classList.remove('hidden');
-      console.error('saveRx error:', rxError);
       setButtonLoading(btn, false);
       return;
     }
@@ -4666,8 +4746,6 @@
       prescription_id: rxId,
       lens_id:        Rx.selectedLensId || null,
       frame_id:       Rx.selectedFrameId || null,
-      frame_type:     document.getElementById('rx-frame-type').value || null,
-      frame_cost_price: floatOrNull('rx-frame-cost-price') || 0,
       lens_price:     lensPrice,
       frame_price:    framePrice,
       consult_fee:    consult,
@@ -4715,24 +4793,19 @@
         .select('id').eq('prescription_id', rxId).maybeSingle();
 
       if (!existingPmt) {
-        // Get the order id (needed for payments.order_id)
-        const { data: linkedOrder } = await sb.from('orders')
-          .select('id').eq('prescription_id', rxId).maybeSingle();
-
         await sb.from('payments').insert({
-          clinic_id:       App.clinic.id,
-          patient_id:      Rx.patientId,
+          clinic_id:      App.clinic.id,
+          patient_id:     Rx.patientId,
           prescription_id: rxId,
-          order_id:        linkedOrder?.id || null,
-          amount:          paid,
-          payment_method:  document.getElementById('rx-payment-method').value,
-          payment_date:    examDate,
-          created_by:      App.clinicUser.id,
+          amount:         paid,
+          payment_method: document.getElementById('rx-payment-method').value,
+          payment_date:   examDate,
+          created_by:     App.clinicUser.id,
         }).catch(() => {});
       }
     }
 
-    logAudit(Rx.editingId ? 'prescription_update' : 'prescription_create', 'prescriptions', rxId);
+    logAudit(Rx.editingId ? 'rx_update' : 'rx_create', 'prescriptions', rxId);
     showToast(
       lang === 'ar' ? 'تم حفظ الوصفة بنجاح' : 'Prescription saved',
       'success'
@@ -4757,7 +4830,7 @@
       if (error) {
         showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error');
       } else {
-        logAudit('prescription_delete', 'prescriptions', Rx.editingId);
+        logAudit('rx_delete', 'prescriptions', Rx.editingId);
         showToast(lang === 'ar' ? 'تم حذف الوصفة' : 'Prescription deleted', 'success');
         closeRxConfirm();
         document.getElementById('rx-modal').classList.add('hidden');
@@ -4785,11 +4858,559 @@
     return v || null;
   }
 
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 7 — LENS & FRAME INVENTORY PAGES
+  // ═══════════════════════════════════════════════════
+
+  const LensInv  = { editingId: null, searchTimer: null, list: [] };
+  const FrameInv = { editingId: null, searchTimer: null, list: [] };
+
+  const FRAME_TYPE_LABELS = {
+    full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless',
+    sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport',
+  };
+  const LENS_TYPE_LABELS = {
+    single: 'Single Vision', bifocal: 'Bifocal',
+    progressive: 'Progressive', plano: 'Plano',
+  };
+
+  // ── LENSES ──────────────────────────────────────────
+
+  function debounceLensSearch(val) {
+    clearTimeout(LensInv.searchTimer);
+    LensInv.searchTimer = setTimeout(() => loadLenses(), 350);
+  }
+
+  async function loadLenses() {
+    const lang    = App.clinic?.language || 'ar';
+    const cid     = App.clinic?.id;
+    const search  = document.getElementById('lenses-search')?.value?.trim() || '';
+    const typeFilter = document.getElementById('lenses-filter-type')?.value || '';
+    const tbody   = document.getElementById('lenses-tbody');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    let query = sb.from('lenses')
+      .select('*')
+      .eq('clinic_id', cid)
+      .order('brand', { ascending: true })
+      .order('sphere',   { ascending: true });
+
+    if (typeFilter) query = query.eq('lens_type', typeFilter);
+    if (search)     query = query.or(`brand.ilike.%${search}%,material.ilike.%${search}%,coating.ilike.%${search}%`);
+
+    const { data, error } = await query;
+    LensInv.list = data || [];
+
+    // Stats
+    const total    = LensInv.list.length;
+    const totalQty = LensInv.list.reduce((s, l) => s + (l.quantity || 0), 0);
+    const lowCount = LensInv.list.filter(l => l.quantity <= (l.restock_level ?? 2)).length;
+    document.getElementById('lens-stats').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val">${total}</span><span class="pt-stat-lbl"><span class="ar">إجمالي الأصناف</span><span class="en" style="display:none">SKUs</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${totalQty}</span><span class="pt-stat-lbl"><span class="ar">إجمالي الكمية</span><span class="en" style="display:none">Total Qty</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${lowCount > 0 ? 'var(--danger)' : 'var(--success)'}">${lowCount}</span><span class="pt-stat-lbl"><span class="ar">مخزون منخفض</span><span class="en" style="display:none">Low Stock</span></span></div>
+    `;
+    applyLanguage(lang, false);
+
+    if (error || !LensInv.list.length) {
+      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i data-lucide="circle-dot"></i><p>${lang === 'ar' ? 'لا توجد عدسات مضافة' : 'No lenses added yet'}</p></div></td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = LensInv.list.map(l => {
+      const qtyClass = l.quantity <= (l.restock_level ?? 2) ? (l.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
+      const sell = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
+      const cost = l.cost_price ? Number(l.cost_price).toLocaleString() + ' IQD' : '—';
+      return `<tr>
+        <td><span style="font-weight:500">${l.brand || '—'}</span></td>
+        <td><span class="badge badge-info">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type}</span></td>
+        <td>${l.material || '—'}</td>
+        <td>${l.coating || '—'}</td>
+        <td class="font-mono">${l.sphere >= 0 ? '+' : ''}${Number(l.sphere).toFixed(2)}</td>
+        <td class="font-mono">${Number(l.cylinder || 0).toFixed(2)}</td>
+        <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
+        <td class="font-mono">${sell}</td>
+        <td class="font-mono text-muted">${cost}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')">
+            <i data-lucide="pencil"></i>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+    lucide.createIcons();
+  }
+
+  async function openLensModal(lensId = null) {
+    const lang   = App.clinic?.language || 'ar';
+    const errEl  = document.getElementById('lens-form-error');
+    const delBtn = document.getElementById('lens-delete-btn');
+    errEl.classList.add('hidden');
+    LensInv.editingId = null;
+    delBtn.style.display = 'none';
+
+    // Reset fields
+    ['lens-brand','lens-material','lens-coating','lens-sph','lens-notes'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('lens-cyl').value      = '0';
+    document.getElementById('lens-qty').value      = '';
+    document.getElementById('lens-restock').value  = '2';
+    document.getElementById('lens-sell-price').value = '';
+    document.getElementById('lens-cost-price').value = '';
+    document.getElementById('lens-type').value     = 'single';
+
+    if (lensId) {
+      LensInv.editingId = lensId;
+      delBtn.style.display = '';
+      document.getElementById('lens-modal-title').innerHTML = '<span class="ar">تعديل العدسة</span><span class="en" style="display:none">Edit Lens</span>';
+      const { data: l } = await sb.from('lenses').select('*').eq('id', lensId).single();
+      if (l) {
+        document.getElementById('lens-brand').value       = l.brand || '';
+        document.getElementById('lens-type').value        = l.lens_type || 'single';
+        document.getElementById('lens-material').value    = l.material || '';
+        document.getElementById('lens-coating').value     = l.coating || '';
+        document.getElementById('lens-sph').value         = l.sphere ?? '';
+        document.getElementById('lens-cyl').value         = l.cylinder ?? 0;
+        document.getElementById('lens-qty').value         = l.quantity ?? 0;
+        document.getElementById('lens-restock').value     = l.restock_level ?? 2;
+        document.getElementById('lens-sell-price').value  = l.sell_price || '';
+        document.getElementById('lens-cost-price').value  = l.cost_price || '';
+        document.getElementById('lens-notes').value       = l.notes || '';
+      }
+    } else {
+      document.getElementById('lens-modal-title').innerHTML = '<span class="ar">عدسة جديدة</span><span class="en" style="display:none">New Lens</span>';
+    }
+
+    document.getElementById('lens-modal').classList.remove('hidden');
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  function closeLensModal(e) {
+    if (e && e.target !== document.getElementById('lens-modal')) return;
+    document.getElementById('lens-modal').classList.add('hidden');
+    LensInv.editingId = null;
+  }
+
+  async function saveLens() {
+    const lang  = App.clinic?.language || 'ar';
+    const btn   = document.getElementById('lens-save-btn');
+    const errEl = document.getElementById('lens-form-error');
+    errEl.classList.add('hidden');
+
+    const sph = parseFloat(document.getElementById('lens-sph').value);
+    if (isNaN(sph)) {
+      errEl.textContent = lang === 'ar' ? 'قيمة SPH مطلوبة' : 'SPH value is required';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const qty = parseInt(document.getElementById('lens-qty').value);
+    if (isNaN(qty) || qty < 0) {
+      errEl.textContent = lang === 'ar' ? 'الكمية مطلوبة' : 'Quantity is required';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const payload = {
+      clinic_id:     App.clinic.id,
+      brand:         document.getElementById('lens-brand').value.trim()    || null,
+      lens_type:     document.getElementById('lens-type').value,
+      material:      document.getElementById('lens-material').value.trim() || null,
+      coating:       document.getElementById('lens-coating').value.trim()  || null,
+      sphere:        sph,
+      cylinder:      parseFloat(document.getElementById('lens-cyl').value) || 0,
+      quantity:      qty,
+      restock_level: parseInt(document.getElementById('lens-restock').value) || 2,
+      sell_price:    parseFloat(document.getElementById('lens-sell-price').value) || 0,
+      cost_price:    parseFloat(document.getElementById('lens-cost-price').value) || 0,
+      notes:         document.getElementById('lens-notes').value.trim() || null,
+    };
+
+    setButtonLoading(btn, true);
+    let error;
+    if (LensInv.editingId) {
+      const res = await sb.from('lenses').update(payload).eq('id', LensInv.editingId);
+      error = res.error;
+    } else {
+      const res = await sb.from('lenses').insert(payload);
+      error = res.error;
+    }
+    setButtonLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = (lang === 'ar' ? 'حدث خطأ' : 'Error') + ' — ' + (error.message || '');
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
+    document.getElementById('lens-modal').classList.add('hidden');
+    loadLenses();
+  }
+
+  async function deleteLens() {
+    const lang = App.clinic?.language || 'ar';
+    if (!LensInv.editingId) return;
+    if (!confirm(lang === 'ar' ? 'هل تريد حذف هذه العدسة نهائياً؟' : 'Delete this lens permanently?')) return;
+    const { error } = await sb.from('lenses').delete().eq('id', LensInv.editingId);
+    if (error) { showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error'); return; }
+    showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
+    document.getElementById('lens-modal').classList.add('hidden');
+    loadLenses();
+  }
+
+  // ── FRAMES ──────────────────────────────────────────
+
+  function debounceFramePageSearch(val) {
+    clearTimeout(FrameInv.searchTimer);
+    FrameInv.searchTimer = setTimeout(() => loadFrames(), 350);
+  }
+
+  async function loadFrames() {
+    const lang       = App.clinic?.language || 'ar';
+    const cid        = App.clinic?.id;
+    const search     = document.getElementById('frames-search')?.value?.trim() || '';
+    const typeFilter = document.getElementById('frames-filter-type')?.value || '';
+    const tbody      = document.getElementById('frames-tbody');
+    tbody.innerHTML  = '<tr><td colspan="10" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+
+    let query = sb.from('frames')
+      .select('*')
+      .eq('clinic_id', cid)
+      .order('brand', { ascending: true });
+
+    if (typeFilter) query = query.eq('frame_type', typeFilter);
+    if (search)     query = query.or(`brand.ilike.%${search}%,model.ilike.%${search}%,color.ilike.%${search}%`);
+
+    const { data, error } = await query;
+    FrameInv.list = data || [];
+
+    // Stats
+    const total    = FrameInv.list.length;
+    const totalQty = FrameInv.list.reduce((s, f) => s + (f.quantity || 0), 0);
+    const lowCount = FrameInv.list.filter(f => f.quantity <= (f.restock_level ?? 1)).length;
+    document.getElementById('frame-stats').innerHTML = `
+      <div class="pt-stat"><span class="pt-stat-val">${total}</span><span class="pt-stat-lbl"><span class="ar">إجمالي الأصناف</span><span class="en" style="display:none">SKUs</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val">${totalQty}</span><span class="pt-stat-lbl"><span class="ar">إجمالي الكمية</span><span class="en" style="display:none">Total Qty</span></span></div>
+      <div class="pt-stat"><span class="pt-stat-val" style="color:${lowCount > 0 ? 'var(--danger)' : 'var(--success)'}">${lowCount}</span><span class="pt-stat-lbl"><span class="ar">مخزون منخفض</span><span class="en" style="display:none">Low Stock</span></span></div>
+    `;
+    applyLanguage(lang, false);
+
+    if (error || !FrameInv.list.length) {
+      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i data-lucide="glasses"></i><p>${lang === 'ar' ? 'لا توجد إطارات مضافة' : 'No frames added yet'}</p></div></td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = FrameInv.list.map(f => {
+      const qtyClass = f.quantity <= (f.restock_level ?? 1) ? (f.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
+      const sell = f.sell_price ? Number(f.sell_price).toLocaleString() + ' IQD' : '—';
+      const cost = f.cost_price ? Number(f.cost_price).toLocaleString() + ' IQD' : '—';
+      const typeLabel = FRAME_TYPE_LABELS[f.frame_type] || '—';
+      return `<tr>
+        <td><span style="font-weight:500">${f.brand || '—'}</span></td>
+        <td>${f.model || '—'}</td>
+        <td>${f.frame_type ? `<span class="badge badge-info">${typeLabel}</span>` : '—'}</td>
+        <td>${f.color || '—'}</td>
+        <td class="font-mono text-secondary">${f.size || '—'}</td>
+        <td>${f.material || '—'}</td>
+        <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
+        <td class="font-mono">${sell}</td>
+        <td class="font-mono text-muted">${cost}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')">
+            <i data-lucide="pencil"></i>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+    lucide.createIcons();
+  }
+
+  async function openFrameModal(frameId = null) {
+    const lang   = App.clinic?.language || 'ar';
+    const errEl  = document.getElementById('frame-form-error');
+    const delBtn = document.getElementById('frame-delete-btn');
+    errEl.classList.add('hidden');
+    FrameInv.editingId = null;
+    delBtn.style.display = 'none';
+
+    ['frame-brand','frame-model','frame-color','frame-size','frame-material','frame-notes'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('frame-qty').value       = '';
+    document.getElementById('frame-restock').value   = '1';
+    document.getElementById('frame-sell-price').value = '';
+    document.getElementById('frame-cost-price').value = '';
+    document.getElementById('frame-type').value      = '';
+
+    if (frameId) {
+      FrameInv.editingId = frameId;
+      delBtn.style.display = '';
+      document.getElementById('frame-modal-title').innerHTML = '<span class="ar">تعديل الإطار</span><span class="en" style="display:none">Edit Frame</span>';
+      const { data: f } = await sb.from('frames').select('*').eq('id', frameId).single();
+      if (f) {
+        document.getElementById('frame-brand').value       = f.brand || '';
+        document.getElementById('frame-model').value       = f.model || '';
+        document.getElementById('frame-type').value        = f.frame_type || '';
+        document.getElementById('frame-color').value       = f.color || '';
+        document.getElementById('frame-size').value        = f.size || '';
+        document.getElementById('frame-material').value    = f.material || '';
+        document.getElementById('frame-qty').value         = f.quantity ?? 0;
+        document.getElementById('frame-restock').value     = f.restock_level ?? 1;
+        document.getElementById('frame-sell-price').value  = f.sell_price || '';
+        document.getElementById('frame-cost-price').value  = f.cost_price || '';
+        document.getElementById('frame-notes').value       = f.notes || '';
+      }
+    } else {
+      document.getElementById('frame-modal-title').innerHTML = '<span class="ar">إطار جديد</span><span class="en" style="display:none">New Frame</span>';
+    }
+
+    document.getElementById('frame-modal').classList.remove('hidden');
+    applyLanguage(lang, false);
+    lucide.createIcons();
+  }
+
+  function closeFrameModal(e) {
+    if (e && e.target !== document.getElementById('frame-modal')) return;
+    document.getElementById('frame-modal').classList.add('hidden');
+    FrameInv.editingId = null;
+  }
+
+  async function saveFrame() {
+    const lang  = App.clinic?.language || 'ar';
+    const btn   = document.getElementById('frame-save-btn');
+    const errEl = document.getElementById('frame-form-error');
+    errEl.classList.add('hidden');
+
+    const qty = parseInt(document.getElementById('frame-qty').value);
+    if (isNaN(qty) || qty < 0) {
+      errEl.textContent = lang === 'ar' ? 'الكمية مطلوبة' : 'Quantity is required';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const payload = {
+      clinic_id:     App.clinic.id,
+      brand:         document.getElementById('frame-brand').value.trim()    || null,
+      model:         document.getElementById('frame-model').value.trim()    || null,
+      frame_type:    document.getElementById('frame-type').value            || null,
+      color:         document.getElementById('frame-color').value.trim()    || null,
+      size:          document.getElementById('frame-size').value.trim()     || null,
+      material:      document.getElementById('frame-material').value.trim() || null,
+      quantity:      qty,
+      restock_level: parseInt(document.getElementById('frame-restock').value) || 1,
+      sell_price:    parseFloat(document.getElementById('frame-sell-price').value) || 0,
+      cost_price:    parseFloat(document.getElementById('frame-cost-price').value) || 0,
+      notes:         document.getElementById('frame-notes').value.trim() || null,
+    };
+
+    setButtonLoading(btn, true);
+    let error;
+    if (FrameInv.editingId) {
+      const res = await sb.from('frames').update(payload).eq('id', FrameInv.editingId);
+      error = res.error;
+    } else {
+      const res = await sb.from('frames').insert(payload);
+      error = res.error;
+    }
+    setButtonLoading(btn, false);
+
+    if (error) {
+      errEl.textContent = (lang === 'ar' ? 'حدث خطأ' : 'Error') + ' — ' + (error.message || '');
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
+    document.getElementById('frame-modal').classList.add('hidden');
+    loadFrames();
+  }
+
+  async function deleteFrame() {
+    const lang = App.clinic?.language || 'ar';
+    if (!FrameInv.editingId) return;
+    if (!confirm(lang === 'ar' ? 'هل تريد حذف هذا الإطار نهائياً؟' : 'Delete this frame permanently?')) return;
+    const { error } = await sb.from('frames').delete().eq('id', FrameInv.editingId);
+    if (error) { showToast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error'); return; }
+    showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
+    document.getElementById('frame-modal').classList.add('hidden');
+    loadFrames();
+  }
+
   // Expose openRxModal globally (called from patient table)
   window.openRxModal = openRxModal;
 
   document.addEventListener('DOMContentLoaded', init);
   </script>
 
+
+      <!-- ═══════════════════════════════════
+           LENS MODAL
+      ═══════════════════════════════════ -->
+      <div id="lens-modal" class="modal-backdrop hidden" onclick="closeLensModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title" id="lens-modal-title">
+              <span class="ar">عدسة جديدة</span><span class="en" style="display:none">New Lens</span>
+            </div>
+            <button class="modal-close" onclick="closeLensModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></label>
+                <input type="text" id="lens-brand" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">النوع *</span><span class="en" style="display:none">Type *</span></label>
+                <select id="lens-type" class="form-control">
+                  <option value="single">Single Vision</option>
+                  <option value="bifocal">Bifocal</option>
+                  <option value="progressive">Progressive</option>
+                  <option value="plano">Plano</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">المادة</span><span class="en" style="display:none">Material</span></label>
+                <input type="text" id="lens-material" class="form-control" placeholder="e.g. CR-39, 1.67, Poly" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الطلاء</span><span class="en" style="display:none">Coating</span></label>
+                <input type="text" id="lens-coating" class="form-control" placeholder="e.g. AR, Blue Cut" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">SPH *</label>
+                <input type="number" id="lens-sph" class="form-control" step="0.25" placeholder="0.00" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">CYL</label>
+                <input type="number" id="lens-cyl" class="form-control" step="0.25" placeholder="0.00" value="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الكمية *</span><span class="en" style="display:none">Quantity *</span></label>
+                <input type="number" id="lens-qty" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">حد التنبيه</span><span class="en" style="display:none">Restock At</span></label>
+                <input type="number" id="lens-restock" class="form-control" min="0" placeholder="2" value="2" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">سعر البيع (IQD)</span><span class="en" style="display:none">Sell Price (IQD)</span></label>
+                <input type="number" id="lens-sell-price" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">سعر الشراء (IQD)</span><span class="en" style="display:none">Cost Price (IQD)</span></label>
+                <input type="number" id="lens-cost-price" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label"><span class="ar">ملاحظات</span><span class="en" style="display:none">Notes</span></label>
+                <textarea id="lens-notes" class="form-control" rows="2" style="resize:vertical"></textarea>
+              </div>
+            </div>
+            <div id="lens-form-error" class="form-error hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger btn-sm" id="lens-delete-btn" onclick="deleteLens()" style="display:none;margin-inline-end:auto">
+              <i data-lucide="trash-2"></i>
+              <span class="ar">حذف</span><span class="en" style="display:none">Delete</span>
+            </button>
+            <button class="btn btn-secondary" onclick="closeLensModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="lens-save-btn" onclick="saveLens()">
+              <i data-lucide="save"></i>
+              <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════
+           FRAME MODAL
+      ═══════════════════════════════════ -->
+      <div id="frame-modal" class="modal-backdrop hidden" onclick="closeFrameModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title" id="frame-modal-title">
+              <span class="ar">إطار جديد</span><span class="en" style="display:none">New Frame</span>
+            </div>
+            <button class="modal-close" onclick="closeFrameModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></label>
+                <input type="text" id="frame-brand" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الموديل</span><span class="en" style="display:none">Model</span></label>
+                <input type="text" id="frame-model" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">النوع</span><span class="en" style="display:none">Type</span></label>
+                <select id="frame-type" class="form-control">
+                  <option value="">—</option>
+                  <option value="full_rim">Full Rim</option>
+                  <option value="half_rim">Half Rim</option>
+                  <option value="rimless">Rimless</option>
+                  <option value="sunglass">Sunglass</option>
+                  <option value="kids">Kids</option>
+                  <option value="sport">Sport</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">اللون</span><span class="en" style="display:none">Color</span></label>
+                <input type="text" id="frame-color" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">المقاس</span><span class="en" style="display:none">Size</span></label>
+                <input type="text" id="frame-size" class="form-control" placeholder="e.g. 52-18-140" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">المادة</span><span class="en" style="display:none">Material</span></label>
+                <input type="text" id="frame-material" class="form-control" placeholder="e.g. Metal, Acetate" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الكمية *</span><span class="en" style="display:none">Quantity *</span></label>
+                <input type="number" id="frame-qty" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">حد التنبيه</span><span class="en" style="display:none">Restock At</span></label>
+                <input type="number" id="frame-restock" class="form-control" min="0" placeholder="1" value="1" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">سعر البيع (IQD)</span><span class="en" style="display:none">Sell Price (IQD)</span></label>
+                <input type="number" id="frame-sell-price" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">سعر الشراء (IQD)</span><span class="en" style="display:none">Cost Price (IQD)</span></label>
+                <input type="number" id="frame-cost-price" class="form-control" min="0" placeholder="0" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label"><span class="ar">ملاحظات</span><span class="en" style="display:none">Notes</span></label>
+                <textarea id="frame-notes" class="form-control" rows="2" style="resize:vertical"></textarea>
+              </div>
+            </div>
+            <div id="frame-form-error" class="form-error hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger btn-sm" id="frame-delete-btn" onclick="deleteFrame()" style="display:none;margin-inline-end:auto">
+              <i data-lucide="trash-2"></i>
+              <span class="ar">حذف</span><span class="en" style="display:none">Delete</span>
+            </button>
+            <button class="btn btn-secondary" onclick="closeFrameModal()">
+              <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
+            </button>
+            <button class="btn btn-primary" id="frame-save-btn" onclick="saveFrame()">
+              <i data-lucide="save"></i>
+              <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
+            </button>
+          </div>
+        </div>
+      </div>
 </body>
 </html>
