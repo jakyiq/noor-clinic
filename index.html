@@ -2678,7 +2678,6 @@
             <table>
               <thead>
                 <tr>
-                  <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
                   <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
                   <th>SPH / CYL</th>
                   <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
@@ -2688,7 +2687,7 @@
                 </tr>
               </thead>
               <tbody id="restock-lenses-tbody">
-                <tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+                <tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -4279,6 +4278,8 @@
     const lang  = App.clinic?.language || 'ar';
     const modal = document.getElementById('patient-ledger-modal');
 
+    Debtors._ledgerPatientId = patientId; // used by saveQuickPayment to refresh ledger
+
     document.getElementById('ledger-pt-name').textContent = patientName;
     document.getElementById('ledger-pt-body').innerHTML   = '<div class="empty-state"><div class="spinner lg"></div></div>';
     document.getElementById('ledger-summary-bar').innerHTML = '';
@@ -4309,8 +4310,8 @@
 
     const lensMap = {}, frameMap = {};
     if (lensIds.length) {
-      const { data: lensRows } = await sb.from('lenses').select('id, brand, lens_type, material').in('id', lensIds);
-      (lensRows||[]).forEach(l => { lensMap[l.id] = [l.brand, LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material].filter(Boolean).join(' · '); });
+      const { data: lensRows } = await sb.from('lenses').select('id, lens_type, material').in('id', lensIds);
+      (lensRows||[]).forEach(l => { lensMap[l.id] = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material].filter(Boolean).join(' · '); });
     }
     if (frameIds.length) {
       const { data: frameRows } = await sb.from('frames').select('id, brand, model, color').in('id', frameIds);
@@ -4437,6 +4438,13 @@
               ${order.remaining > 0 ? `<div style="display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid var(--border)">
                 <span style="color:var(--danger)">${lang==='ar'?'متبقي:':'Remaining:'}</span>
                 <span style="font-family:var(--font-mono);color:var(--danger);font-weight:600">${fmt(order.remaining)}</span>
+              </div>
+              <div style="margin-top:8px">
+                <button class="btn btn-sm" style="background:var(--success);color:#fff;width:100%;font-weight:600"
+                  onclick="openPayModal('${order.id}','${patientName.replace(/'/g,"\\'")}',${order.remaining})">
+                  <i data-lucide="banknote" style="width:14px;height:14px"></i>
+                  ${lang==='ar'?'دفع ':'Pay '} ${fmt(order.remaining)}
+                </button>
               </div>` : ''}
             </div>` : ''}
             <!-- Payments -->
@@ -4451,6 +4459,7 @@
   function closePatientLedger(e) {
     if (e && e.target !== document.getElementById('patient-ledger-modal')) return;
     document.getElementById('patient-ledger-modal').classList.add('hidden');
+    Debtors._ledgerPatientId = null;
   }
 
   // ── Search ──────────────────────────────────────
@@ -5061,7 +5070,7 @@
 
     // Build a broad query then filter client-side with ±0.25
     let q = sb.from('lenses')
-      .select('id, brand, lens_type, material, coating, sphere, cylinder, quantity, sell_price')
+      .select('id, lens_type, material, coating, sphere, cylinder, quantity, sell_price')
       .eq('clinic_id', App.clinic.id)
       .gt('quantity', 0);
 
@@ -5108,7 +5117,7 @@
     }
 
     const items = matches.slice(0, 8).map(l => {
-      const name     = [l.brand, LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
+      const name     = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
       const rxStr    = `SPH ${(l.sphere >= 0 ? '+' : '')}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
       const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
       const selected = Rx.selectedLensId === l.id ? 'checked' : '';
@@ -5897,7 +5906,7 @@
 
     // ── Lenses low-stock ──
     const { data: lenses } = await sb.from('lenses')
-      .select('id, brand, lens_type, material, sphere, cylinder, quantity, restock_level, sell_price')
+      .select('id, lens_type, material, sphere, cylinder, quantity, restock_level, sell_price')
       .eq('clinic_id', cid)
       .order('quantity', { ascending: true });
 
@@ -5928,14 +5937,14 @@
     // Render lens table
     const lTbody = document.getElementById('restock-lenses-tbody');
     if (!lowLenses.length) {
-      lTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="check-circle"></i><p>${lang === 'ar' ? 'لا توجد عدسات منخفضة المخزون' : 'No low-stock lenses'}</p></div></td></tr>`;
+      lTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i data-lucide="check-circle"></i><p>${lang === 'ar' ? 'لا توجد عدسات منخفضة المخزون' : 'No low-stock lenses'}</p></div></td></tr>`;
     } else {
       lTbody.innerHTML = lowLenses.map(l => {
         const qtyClass = l.quantity === 0 ? 'badge-danger' : 'badge-warning';
         const sph = (l.sphere >= 0 ? '+' : '') + Number(l.sphere).toFixed(2);
         const cyl = Number(l.cylinder || 0).toFixed(2);
         return `<tr>
-          <td><span style="font-weight:500">${l.brand || '—'}</span></td>
+          <td><span style="font-weight:500">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type || '—'}</span></td>
           <td><span class="badge badge-info">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type}</span></td>
           <td class="font-mono">${sph} / ${cyl}</td>
           <td>${l.material || '—'}</td>
@@ -6296,6 +6305,14 @@
 
     showToast(lang === 'ar' ? 'تم تسجيل الدفعة' : 'Payment recorded', 'success');
     document.getElementById('pay-modal').classList.add('hidden');
+    // Refresh whichever view is open
+    if (!document.getElementById('patient-ledger-modal').classList.contains('hidden')) {
+      // Re-open ledger for same patient to reflect new payment
+      const ptName = document.getElementById('ledger-pt-name').textContent;
+      const ptId   = Debtors._ledgerPatientId || null;
+      if (ptId) openPatientLedger(ptId, ptName);
+    }
+    if (App.currentPage === 'patients') fetchPatients();
     loadDebtors();
   }
 
@@ -6434,7 +6451,7 @@
 
     // Top lenses
     const { data: topLensOrders } = await sb.from('orders')
-      .select('lens_id, lenses!orders_lens_id_fkey(brand, lens_type)')
+      .select('lens_id, lenses!orders_lens_id_fkey(lens_type, material)')
       .eq('clinic_id', cid)
       .not('lens_id', 'is', null)
       .gte('order_date', from);
@@ -6443,7 +6460,7 @@
     (topLensOrders || []).forEach(o => {
       if (!o.lens_id) return;
       const key  = o.lens_id;
-      const name = [o.lenses?.brand, LENS_TYPE_LABELS[o.lenses?.lens_type]].filter(Boolean).join(' ') || '—';
+      const name = [LENS_TYPE_LABELS[o.lenses?.lens_type]||o.lenses?.lens_type, o.lenses?.material].filter(Boolean).join(' · ') || '—';
       lensCounts[key] = { name, count: (lensCounts[key]?.count || 0) + 1 };
     });
     const topLenses = Object.values(lensCounts).sort((a, b) => b.count - a.count).slice(0, 6);
