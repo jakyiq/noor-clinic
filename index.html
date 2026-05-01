@@ -5009,25 +5009,22 @@
   // ── Load doctors into select ────────────────────
   async function loadDoctorsSelect() {
     const { data } = await sb
-      .from('clinic_users')
-      .select('id, full_name')
+      .from('doctors')
+      .select('id, full_name, title')
       .eq('clinic_id', App.clinic.id)
-      .in('role', ['admin','doctor'])
-      .eq('is_active', true);
+      .order('full_name');
 
     const sel = document.getElementById('rx-doctor');
     const lang = App.clinic?.language || 'ar';
     sel.innerHTML = `<option value="">— ${lang === 'ar' ? 'اختر' : 'Select'}</option>`;
-    (data || []).forEach(u => {
+    (data || []).forEach(d => {
       const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.full_name;
+      opt.value = d.id;
+      opt.textContent = [d.title, d.full_name].filter(Boolean).join(' ');
       sel.appendChild(opt);
     });
-    // Default to current user if doctor/admin
-    if (['admin','doctor'].includes(App.clinicUser?.role)) {
-      sel.value = App.clinicUser.id;
-    }
+    // Auto-select if only one doctor
+    if (data?.length === 1) sel.value = data[0].id;
   }
 
   // ── Load Rx history sidebar ─────────────────────
@@ -5501,7 +5498,7 @@
     const rxPayload = {
       clinic_id:      App.clinic.id,
       patient_id:     Rx.patientId,
-      doctor_id:      document.getElementById('rx-doctor').value || null,
+      doctor_id:      (document.getElementById('rx-doctor').value || '').trim() || null,
       exam_date:      examDate,
       notes:          document.getElementById('rx-exam-notes').value.trim() || null,
       checkup:        document.getElementById('rx-checkup').checked,
