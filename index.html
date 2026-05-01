@@ -2723,7 +2723,7 @@
               <option value=""><span class="ar">كل الطرق</span></option>
               <option value="cash"><span class="ar">نقداً</span></option>
               <option value="card"><span class="ar">بطاقة</span></option>
-              <option value="transfer"><span class="ar">تحويل</span></option>
+              
             </select>
           </div>
         </div>
@@ -2834,26 +2834,78 @@
                 <label class="form-label"><span class="ar">نص تذييل الوصفة</span><span class="en" style="display:none">Prescription Footer</span></label>
                 <input type="text" id="s-footer" class="form-control" placeholder="e.g. شكراً لزيارتكم">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="grid-column:1/-1">
                 <label class="form-label">
-                  <span class="ar">رابط شعار العيادة (URL)</span>
-                  <span class="en" style="display:none">Clinic Logo URL</span>
+                  <span class="ar">شعار العيادة (للوصفة المطبوعة)</span>
+                  <span class="en" style="display:none">Clinic Logo (for printed prescriptions)</span>
                 </label>
-                <input type="url" id="s-logo-url" class="form-control" placeholder="https://…/logo.png">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                  <img id="s-logo-preview" src="" alt="logo preview"
+                    style="width:60px;height:60px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-elevated);display:none" />
+                  <div style="flex:1;min-width:160px">
+                    <input type="file" id="s-logo-file" accept="image/*" class="form-control"
+                      onchange="handleLogoUpload(this)" style="margin-bottom:6px" />
+                    <button type="button" class="btn btn-ghost btn-sm" id="s-logo-clear-btn"
+                      onclick="clearLogo()" style="display:none;color:var(--danger)">
+                      <i data-lucide="x"></i>
+                      <span class="ar">إزالة الشعار</span><span class="en" style="display:none">Remove Logo</span>
+                    </button>
+                  </div>
+                </div>
+                <!-- hidden field to hold base64 or URL -->
+                <input type="hidden" id="s-logo-url" />
                 <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
-                  <span class="ar">يظهر على الوصفة المطبوعة</span>
-                  <span class="en" style="display:none">Appears on printed prescriptions</span>
+                  <span class="ar">يظهر على الوصفة المطبوعة — مقترح: 60×60 بكسل</span>
+                  <span class="en" style="display:none">Appears on printed prescriptions — recommended: 60×60px</span>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">
-                  <span class="ar">رابط موقع العيادة (للـ QR)</span>
-                  <span class="en" style="display:none">Clinic Location URL (for QR)</span>
+                  <span class="ar">صورة QR Code (للوصفة)</span>
+                  <span class="en" style="display:none">QR Code Image (for prescriptions)</span>
+                </label>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                  <img id="s-qr-preview" src="" alt="qr preview"
+                    style="width:64px;height:64px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-elevated);display:none" />
+                  <div style="flex:1;min-width:160px">
+                    <input type="file" id="s-qr-file" accept="image/*" class="form-control"
+                      onchange="handleQrUpload(this)" style="margin-bottom:6px" />
+                    <button type="button" class="btn btn-ghost btn-sm" id="s-qr-clear-btn"
+                      onclick="clearQr()" style="display:none;color:var(--danger)">
+                      <i data-lucide="x"></i>
+                      <span class="ar">إزالة QR</span><span class="en" style="display:none">Remove QR</span>
+                    </button>
+                  </div>
+                </div>
+                <input type="hidden" id="s-qr-data" />
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                  <span class="ar">ارفع صورة QR مباشرة — تظهر أسفل الوصفة</span>
+                  <span class="en" style="display:none">Upload QR image directly — appears at bottom of prescription</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span class="ar">رابط الموقع (للـ QR التلقائي — بديل)</span>
+                  <span class="en" style="display:none">Location URL (auto QR — fallback)</span>
                 </label>
                 <input type="url" id="s-location-url" class="form-control" placeholder="https://maps.google.com/…">
                 <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
-                  <span class="ar">يُحوَّل إلى رمز QR على الوصفة</span>
-                  <span class="en" style="display:none">Converted to a QR code on prescriptions</span>
+                  <span class="ar">يُستخدم فقط إذا لم يُرفع QR مباشرة</span>
+                  <span class="en" style="display:none">Used only if no QR image is uploaded</span>
+                </div>
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+                  <input type="checkbox" id="s-print-show-payment"
+                    style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0" />
+                  <span>
+                    <span class="ar">إظهار بيانات الدفع والفاتورة على الوصفة المطبوعة</span>
+                    <span class="en" style="display:none">Show payment & invoice on printed prescription</span>
+                  </span>
+                </label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;margin-inline-start:26px">
+                  <span class="ar">مُعطَّل افتراضياً — شغّله لطباعة بيانات المبالغ</span>
+                  <span class="en" style="display:none">Off by default — enable to print financial details</span>
                 </div>
               </div>
             </div>
@@ -3271,7 +3323,7 @@
                       <label class="form-label"><span class="ar">طريقة الدفع</span><span class="en" style="display:none">Payment Method</span></label>
                       <select id="rx-payment-method" class="form-control">
                         <option value="cash"><span class="ar">نقداً</span></option>
-                        <option value="transfer"><span class="ar">تحويل</span></option>
+                        
                         <option value="card">Card</option>
                         <option value="partial"><span class="ar">جزئي</span></option>
                       </select>
@@ -4389,7 +4441,7 @@
     const COAT = key => coatingLabels[key] || key;
     const STAT_BADGE = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
     const STAT_LABEL = { paid: lang==='ar'?'مدفوع':'Paid', partial: lang==='ar'?'جزئي':'Partial', unpaid: lang==='ar'?'غير مدفوع':'Unpaid' };
-    const METHOD_LABEL = { cash: lang==='ar'?'نقداً':'Cash', transfer: lang==='ar'?'تحويل':'Transfer', card: 'Card' };
+    const METHOD_LABEL = { cash: lang==='ar'?'نقداً':'Cash', card: lang==='ar'?'بطاقة':'Card' };
 
     document.getElementById('ledger-pt-body').innerHTML = rxs.map(rx => {
       const doctor   = rx.doctors?.full_name || '';
@@ -4430,8 +4482,8 @@
             <div style="display:flex;align-items:center;gap:8px">
               ${payBadge}
               ${order?.remaining > 0 ? `<span style="font-size:0.8rem;color:var(--danger);font-family:var(--font-mono)">${fmt(order.remaining)}</span>` : ''}
-              <button class="btn btn-ghost btn-sm" title="${lang==='ar'?'طباعة وصفة':'Print Rx'}" onclick="event.stopPropagation();printRx('${rx.id}','${patientId}')">
-                <i data-lucide="printer"></i>
+              <button class="btn btn-ghost btn-sm" title="${lang==='ar'?'طباعة وصفة':'Print Rx'}" onclick="event.stopPropagation();printRx('${rx.id}','${patientId}')" style="padding:6px 10px">
+                <i data-lucide="printer" style="width:20px;height:20px"></i>
               </button>
               <button class="btn btn-ghost btn-sm" title="Edit Rx" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')">
                 <i data-lucide="pencil"></i>
@@ -6146,13 +6198,11 @@
     const total    = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
     const cash     = rows.filter(r => r.payment_method === 'cash').reduce((s, r) => s + Number(r.amount), 0);
     const card     = rows.filter(r => r.payment_method === 'card').reduce((s, r) => s + Number(r.amount), 0);
-    const transfer = rows.filter(r => r.payment_method === 'transfer').reduce((s, r) => s + Number(r.amount), 0);
 
     document.getElementById('ledger-stats').innerHTML = `
       <div class="pt-stat"><span class="pt-stat-val" style="color:var(--success)">${fmtIQD(total)}</span><span class="pt-stat-lbl"><span class="ar">الإجمالي</span><span class="en" style="display:none">Total</span></span></div>
       <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(cash)}</span><span class="pt-stat-lbl"><span class="ar">نقداً</span><span class="en" style="display:none">Cash</span></span></div>
       <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(card)}</span><span class="pt-stat-lbl"><span class="ar">بطاقة</span><span class="en" style="display:none">Card</span></span></div>
-      <div class="pt-stat"><span class="pt-stat-val">${fmtIQD(transfer)}</span><span class="pt-stat-lbl"><span class="ar">تحويل</span><span class="en" style="display:none">Transfer</span></span></div>
     `;
     applyLanguage(lang, false);
 
@@ -6161,8 +6211,8 @@
       lucide.createIcons(); return;
     }
 
-    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة', transfer: 'تحويل' };
-    const METHOD_BADGE = { cash: 'badge-success', card: 'badge-info', transfer: 'badge-warning' };
+    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة' };
+    const METHOD_BADGE = { cash: 'badge-success', card: 'badge-info' };
 
     tbody.innerHTML = rows.map(r => {
       const fmtDate = new Date(r.payment_date).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB');
@@ -6434,11 +6484,11 @@
       : `<div class="empty-state" style="padding:20px"><p>${lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</p></div>`;
 
     // Payment method breakdown
-    const methodTotals = { cash: 0, card: 0, transfer: 0 };
+    const methodTotals = { cash: 0, card: 0 };
     (pmts || []).forEach(p => { if (methodTotals[p.payment_method] !== undefined) methodTotals[p.payment_method] += Number(p.amount); });
     const totalForPct = Object.values(methodTotals).reduce((a, b) => a + b, 1);
-    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة', transfer: 'تحويل' };
-    const METHOD_COLOR = { cash: 'var(--success)', card: 'var(--accent)', transfer: 'var(--warning)' };
+    const METHOD_AR = { cash: 'نقداً', card: 'بطاقة' };
+    const METHOD_COLOR = { cash: 'var(--success)', card: 'var(--accent)' };
 
     document.getElementById('reports-method-chart').innerHTML = Object.entries(methodTotals).map(([k, v]) => {
       const pct = Math.round((v / totalForPct) * 100);
@@ -6523,6 +6573,32 @@
     document.getElementById('s-lang').value          = c.language || 'ar';
     document.getElementById('s-theme').value         = c.theme   || 'dark';
     document.getElementById('s-followup-days').value = c.next_visit_default || 30;
+    document.getElementById('s-print-show-payment').checked = !!c.print_show_payment;
+
+    // Logo preview
+    const logoPreview = document.getElementById('s-logo-preview');
+    const logoClearBtn = document.getElementById('s-logo-clear-btn');
+    if (c.logo_url) {
+      logoPreview.src = c.logo_url;
+      logoPreview.style.display = '';
+      if (logoClearBtn) logoClearBtn.style.display = '';
+    } else {
+      logoPreview.style.display = 'none';
+      if (logoClearBtn) logoClearBtn.style.display = 'none';
+    }
+    // QR preview
+    const qrData = document.getElementById('s-qr-data');
+    const qrPreview = document.getElementById('s-qr-preview');
+    const qrClearBtn = document.getElementById('s-qr-clear-btn');
+    if (qrData) qrData.value = c.qr_image || '';
+    if (qrPreview && c.qr_image) {
+      qrPreview.src = c.qr_image;
+      qrPreview.style.display = '';
+      if (qrClearBtn) qrClearBtn.style.display = '';
+    } else if (qrPreview) {
+      qrPreview.style.display = 'none';
+      if (qrClearBtn) qrClearBtn.style.display = 'none';
+    }
 
     // Load team
     const { data: team } = await sb.from('clinic_users')
@@ -6596,6 +6672,8 @@
       language:             newLang,
       theme:                newTheme,
       next_visit_default:   parseInt(document.getElementById('s-followup-days').value) || 30,
+      print_show_payment:   document.getElementById('s-print-show-payment')?.checked ?? false,
+      qr_image:             document.getElementById('s-qr-data')?.value || null,
     };
 
     const { error } = await sb.from('clinics').update(payload).eq('id', App.clinic.id);
@@ -6614,6 +6692,57 @@
 
   // ── DOCTORS (settings) ───────────────────────
   const DoctorMgr = { editingId: null };
+
+  // ── Logo & QR upload helpers ──────────────────
+  function handleLogoUpload(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = e.target.result; // base64 data URL
+      document.getElementById('s-logo-url').value = data;
+      const preview = document.getElementById('s-logo-preview');
+      const clearBtn = document.getElementById('s-logo-clear-btn');
+      if (preview) { preview.src = data; preview.style.display = ''; }
+      if (clearBtn) clearBtn.style.display = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearLogo() {
+    document.getElementById('s-logo-url').value = '';
+    document.getElementById('s-logo-file').value = '';
+    const preview = document.getElementById('s-logo-preview');
+    const clearBtn = document.getElementById('s-logo-clear-btn');
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+
+  function handleQrUpload(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = e.target.result;
+      document.getElementById('s-qr-data').value = data;
+      const preview = document.getElementById('s-qr-preview');
+      const clearBtn = document.getElementById('s-qr-clear-btn');
+      if (preview) { preview.src = data; preview.style.display = ''; }
+      if (clearBtn) clearBtn.style.display = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearQr() {
+    document.getElementById('s-qr-data').value = '';
+    document.getElementById('s-qr-file').value = '';
+    const preview = document.getElementById('s-qr-preview');
+    const clearBtn = document.getElementById('s-qr-clear-btn');
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+
+
 
   async function openDoctorModal(doctorId = null) {
     const lang = App.clinic?.language || 'ar';
@@ -6910,6 +7039,8 @@
     const clinicFooter = clinic.footer_text || '';
     const logoUrl      = clinic.logo_url    || '';
     const locationUrl  = clinic.location_url || '';
+    const qrImageData  = clinic.qr_image    || '';
+    const showPayment  = !!clinic.print_show_payment;
 
     // ── 7. Doctor ────────────────────────────────────
     const doc      = rx.doctors;
@@ -6928,13 +7059,15 @@
       return new Date(d).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB');
     };
 
-    // ── 9. QR code URL (api.qrserver.com — no library) ──
-    const qrSrc = locationUrl
-      ? `https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(locationUrl)}`
-      : '';
+    // ── 9. QR: use uploaded base64 first, fallback to api.qrserver ──
+    const qrSrc = qrImageData
+      ? qrImageData
+      : (locationUrl
+          ? `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(locationUrl)}`
+          : '');
 
     // ── 10. Payment method label ─────────────────────
-    const methodLabel = { cash: isAr ? 'نقداً' : 'Cash', transfer: isAr ? 'تحويل' : 'Transfer', card: 'Card' };
+    const methodLabel = { cash: isAr ? 'نقداً' : 'Cash', card: 'Card' };
 
     // ── 11. Build the HTML document ──────────────────
     const dir = isAr ? 'rtl' : 'ltr';
@@ -6952,7 +7085,7 @@
 
     body {
       font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
-      font-size: 10pt;
+      font-size: 9pt;
       color: #111;
       background: #fff;
       direction: ${dir};
@@ -6961,47 +7094,56 @@
     /* ── A5 page setup ── */
     @page {
       size: A5 portrait;
-      margin: 12mm 14mm 10mm 14mm;
+      margin: 10mm 12mm 10mm 12mm;
     }
 
     @media print {
-      html, body { width: 148mm; height: 210mm; }
+      html, body {
+        width: 148mm;
+        overflow: hidden;
+      }
       .no-print  { display: none !important; }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .slip { page-break-after: avoid; }
     }
 
     /* ── Layout ── */
-    .slip { width: 100%; max-width: 148mm; margin: 0 auto; }
+    .slip {
+      width: 100%;
+      max-width: 124mm; /* 148mm - 12mm*2 margins */
+      margin: 0 auto;
+    }
 
     /* ── Header ── */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding-bottom: 8px;
+      gap: 8px;
+      padding-bottom: 6px;
       border-bottom: 2px solid #1a3a6e;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
-    .header-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; }
+    .header-logo {
+      width: 48px; height: 48px;
+      object-fit: contain; flex-shrink: 0;
+    }
     .header-logo-placeholder {
-      width: 52px; height: 52px; border-radius: 8px;
+      width: 48px; height: 48px; border-radius: 6px;
       background: #1a3a6e; display: flex; align-items: center;
       justify-content: center; flex-shrink: 0;
     }
-    .header-logo-placeholder svg { width: 28px; height: 28px; stroke: #fff; fill: none; }
+    .header-logo-placeholder svg { width: 26px; height: 26px; stroke: #fff; fill: none; }
     .header-clinic { flex: 1; min-width: 0; }
-    .clinic-name-ar { font-size: 14pt; font-weight: 700; color: #1a3a6e; line-height: 1.2; }
-    .clinic-name-en { font-size: 9pt;  font-weight: 400; color: #444; margin-top: 1px; }
-    .clinic-meta    { font-size: 8pt;  color: #666; margin-top: 3px; }
-    .header-qr { flex-shrink: 0; }
-    .header-qr img { width: 56px; height: 56px; display: block; }
+    .clinic-name-ar { font-size: 13pt; font-weight: 700; color: #1a3a6e; line-height: 1.2; }
+    .clinic-name-en { font-size: 8.5pt; font-weight: 400; color: #444; margin-top: 1px; }
+    .clinic-meta    { font-size: 7.5pt; color: #666; margin-top: 2px; }
 
     /* ── Title bar ── */
     .rx-title {
       background: #1a3a6e; color: #fff;
-      text-align: center; font-size: 11pt; font-weight: 600;
-      padding: 4px 0; border-radius: 4px; margin-bottom: 8px;
+      text-align: center; font-size: 10pt; font-weight: 600;
+      padding: 3px 0; border-radius: 3px; margin-bottom: 6px;
       letter-spacing: 0.03em;
     }
 
@@ -7009,60 +7151,66 @@
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3px 16px;
-      font-size: 8.5pt;
-      margin-bottom: 8px;
+      gap: 2px 12px;
+      font-size: 8pt;
+      margin-bottom: 6px;
     }
-    .info-row { display: flex; gap: 4px; }
+    .info-row { display: flex; gap: 4px; flex-wrap: wrap; }
     .info-label { color: #666; white-space: nowrap; }
-    .info-value { font-weight: 500; color: #111; }
+    .info-value { font-weight: 500; color: #111; word-break: break-word; }
 
     /* ── Section title ── */
     .section-title {
-      font-size: 8.5pt; font-weight: 700; color: #1a3a6e;
+      font-size: 8pt; font-weight: 700; color: #1a3a6e;
       text-transform: uppercase; letter-spacing: 0.05em;
       border-bottom: 1px solid #c8d6f0; padding-bottom: 2px;
-      margin: 8px 0 5px;
+      margin: 6px 0 4px;
     }
 
-    /* ── Rx table ── */
+    /* ── Rx table — compact for A5 ── */
     table {
       width: 100%; border-collapse: collapse;
-      font-size: 8.5pt; margin-bottom: 8px;
+      font-size: 7.5pt; margin-bottom: 6px;
+      table-layout: fixed;
     }
     th {
       background: #eef2fb; color: #1a3a6e;
-      font-weight: 600; padding: 4px 5px;
+      font-weight: 600; padding: 3px 3px;
       text-align: center; border: 1px solid #c8d6f0;
-      font-size: 7.5pt; white-space: nowrap;
+      font-size: 7pt; white-space: nowrap;
+      overflow: hidden;
     }
     td {
-      padding: 4px 5px; border: 1px solid #dde4f0;
+      padding: 3px 3px; border: 1px solid #dde4f0;
       text-align: center; font-family: 'IBM Plex Mono', monospace;
-      font-size: 8pt;
+      font-size: 7.5pt; overflow: hidden;
     }
     td.eye-label {
       font-family: 'IBM Plex Sans Arabic', sans-serif;
       font-weight: 600; color: #1a3a6e; background: #f4f7fd;
-      text-align: ${isAr ? 'right' : 'left'}; padding: 4px 8px;
+      text-align: ${isAr ? 'right' : 'left'}; padding: 3px 6px;
+      font-size: 7.5pt;
     }
+    /* Column widths for A5 */
+    table col.col-eye  { width: 22mm; }
+    table col.col-data { width: auto; }
 
     /* ── Detail rows ── */
     .detail-grid {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 3px 16px; font-size: 8.5pt; margin-bottom: 8px;
+      gap: 2px 12px; font-size: 8pt; margin-bottom: 6px;
     }
-    .detail-row   { display: flex; gap: 4px; align-items: baseline; }
-    .detail-label { color: #666; white-space: nowrap; }
-    .detail-value { font-weight: 500; }
-    .detail-full  { grid-column: 1 / -1; display: flex; gap: 4px; align-items: baseline; }
+    .detail-row   { display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
+    .detail-label { color: #666; white-space: nowrap; font-size: 7.5pt; }
+    .detail-value { font-weight: 500; font-size: 8pt; word-break: break-word; }
+    .detail-full  { grid-column: 1 / -1; display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
 
     /* ── Financials ── */
-    .fin-table { width: 100%; font-size: 8.5pt; margin-bottom: 8px; }
+    .fin-table { width: 100%; font-size: 8pt; margin-bottom: 6px; }
     .fin-row   { display: flex; justify-content: space-between; padding: 2px 0; }
     .fin-row.total-row {
-      font-weight: 700; font-size: 9.5pt; color: #1a3a6e;
-      border-top: 1px solid #1a3a6e; margin-top: 4px; padding-top: 4px;
+      font-weight: 700; font-size: 9pt; color: #1a3a6e;
+      border-top: 1px solid #1a3a6e; margin-top: 3px; padding-top: 3px;
     }
     .fin-row.remaining-row { color: #c02030; font-weight: 600; }
     .fin-row.paid-row      { color: #0e8a58; }
@@ -7071,32 +7219,61 @@
     /* ── Next visit / notes ── */
     .next-visit {
       background: #eef5ff; border: 1px solid #c8d6f0;
-      border-radius: 4px; padding: 5px 8px;
-      font-size: 8.5pt; margin-bottom: 6px;
-      display: flex; align-items: center; gap: 6px;
+      border-radius: 3px; padding: 4px 7px;
+      font-size: 8pt; margin-bottom: 5px;
+      display: flex; align-items: center; gap: 5px;
     }
     .next-visit-label { color: #1a3a6e; font-weight: 600; }
     .next-visit-date  { font-weight: 700; color: #1a3a6e; }
 
     .notes-box {
-      border: 1px solid #dde4f0; border-radius: 4px;
-      padding: 5px 8px; font-size: 8pt; color: #333;
-      margin-bottom: 6px; min-height: 24px;
+      border: 1px solid #dde4f0; border-radius: 3px;
+      padding: 4px 7px; font-size: 7.5pt; color: #333;
+      margin-bottom: 5px; min-height: 18px;
     }
 
-    /* ── Footer ── */
-    .footer {
+    /* ── Footer with QR ── */
+    .footer-wrap {
       border-top: 1px solid #c8d6f0; margin-top: 8px;
-      padding-top: 6px; text-align: center;
-      font-size: 7.5pt; color: #888;
+      padding-top: 5px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
     }
-    .footer-text { margin-bottom: 2px; font-size: 8pt; color: #555; }
+    .footer-text-col {
+      flex: 1;
+      font-size: 7pt; color: #888;
+    }
+    .footer-text { margin-bottom: 2px; font-size: 7.5pt; color: #555; }
+    .footer-qr {
+      flex-shrink: 0;
+    }
+    .footer-qr img {
+      width: 64px; height: 64px;
+      display: block;
+      object-fit: contain;
+    }
+
+    /* ── Signature line ── */
+    .sig-line {
+      display: flex;
+      justify-content: ${isAr ? 'flex-start' : 'flex-end'};
+      margin-top: 8px; margin-bottom: 6px;
+    }
+    .sig-inner {
+      text-align: center; min-width: 100px;
+    }
+    .sig-inner-top {
+      border-top: 1px solid #999;
+      padding-top: 3px; font-size: 7pt; color: #555;
+    }
 
     /* ── Print button (screen only) ── */
     .print-btn {
-      display: block; margin: 16px auto 0;
-      padding: 8px 24px; background: #1a3a6e; color: #fff;
-      border: none; border-radius: 6px; font-size: 10pt;
+      display: block; margin: 14px auto 0;
+      padding: 7px 22px; background: #1a3a6e; color: #fff;
+      border: none; border-radius: 5px; font-size: 9.5pt;
       cursor: pointer; font-family: inherit;
     }
     .print-btn:hover { background: #142f5a; }
@@ -7125,10 +7302,6 @@
         ${clinicAddr || ''}
       </div>
     </div>
-    ${qrSrc
-      ? `<div class="header-qr"><img src="${qrSrc}" alt="QR" /></div>`
-      : ''
-    }
   </div>
 
   <!-- ── TITLE ── -->
@@ -7165,13 +7338,17 @@
   <!-- ── RX TABLE ── -->
   <div class="section-title">${isAr ? 'قياسات العدسة' : 'Lens Measurements'}</div>
   <table>
+    <colgroup>
+      <col style="width:18mm" />
+      <col /><col /><col /><col /><col /><col /><col />
+    </colgroup>
     <thead>
       <tr>
-        <th style="width:32px">${isAr ? 'العين' : 'Eye'}</th>
-        <th>Sphere</th>
-        <th>Cylinder</th>
+        <th>${isAr ? 'العين' : 'Eye'}</th>
+        <th>SPH</th>
+        <th>CYL</th>
         <th>Axis</th>
-        <th>Addition</th>
+        <th>Add</th>
         <th>IPD</th>
         <th>VA</th>
         <th>BCVA</th>
@@ -7226,8 +7403,8 @@
     </div>
   </div>
 
-  <!-- ── FINANCIALS ── -->
-  ${order ? `
+  <!-- ── FINANCIALS (shown only if print_show_payment is enabled) ── -->
+  ${showPayment && order ? `
   <div class="section-title">${isAr ? 'الفاتورة' : 'Invoice'}</div>
   <div class="fin-table">
     ${order.lens_price  ? `<div class="fin-row"><span>${isAr ? 'سعر العدسة' : 'Lens Price'}</span><span class="fin-mono">${fmtIqd(order.lens_price)}</span></div>` : ''}
@@ -7240,13 +7417,13 @@
     </div>
     ${order.paid ? `<div class="fin-row paid-row"><span>${isAr ? 'المدفوع' : 'Paid'}</span><span class="fin-mono">${fmtIqd(order.paid)}</span></div>` : ''}
     ${order.remaining > 0 ? `<div class="fin-row remaining-row"><span>${isAr ? 'المتبقي' : 'Remaining'}</span><span class="fin-mono">${fmtIqd(order.remaining)}</span></div>` : ''}
-    ${order.payment_method ? `<div class="fin-row" style="color:#666;font-size:7.5pt"><span>${isAr ? 'طريقة الدفع' : 'Payment Method'}</span><span>${methodLabel[order.payment_method] || order.payment_method}</span></div>` : ''}
+    ${order.payment_method ? `<div class="fin-row" style="color:#666;font-size:7pt"><span>${isAr ? 'طريقة الدفع' : 'Payment Method'}</span><span>${methodLabel[order.payment_method] || order.payment_method}</span></div>` : ''}
   </div>` : ''}
 
   <!-- ── NEXT VISIT ── -->
   ${rx.checkup && rx.next_visit_date ? `
   <div class="next-visit">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a3a6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1a3a6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
     <span class="next-visit-label">${isAr ? 'موعد المتابعة:' : 'Next Visit:'}</span>
@@ -7259,26 +7436,29 @@
   <div class="notes-box">${rx.notes}</div>` : ''}
 
   <!-- ── DOCTOR SIGNATURE LINE ── -->
-  <div style="display:flex;justify-content:${isAr ? 'flex-start' : 'flex-end'};margin-top:10px;margin-bottom:8px">
-    <div style="text-align:center;min-width:110px">
-      <div style="border-top:1px solid #999;padding-top:4px;font-size:7.5pt;color:#555">
+  <div class="sig-line">
+    <div class="sig-inner">
+      <div class="sig-inner-top">
         ${docName}
         ${docPhone ? `<br/>${isAr ? 'ت:' : 'Tel:'} ${docPhone}` : ''}
       </div>
     </div>
   </div>
 
-  <!-- ── FOOTER ── -->
-  <div class="footer">
-    ${clinicFooter ? `<div class="footer-text">${clinicFooter}</div>` : ''}
-    <div>
-      ${clinicNameAr}
-      ${clinicPhone ? ` &nbsp;|&nbsp; ${clinicPhone}` : ''}
+  <!-- ── FOOTER WITH QR AT BOTTOM ── -->
+  <div class="footer-wrap">
+    <div class="footer-text-col">
+      ${clinicFooter ? `<div class="footer-text">${clinicFooter}</div>` : ''}
+      <div>
+        ${clinicNameAr}
+        ${clinicPhone ? ` &nbsp;|&nbsp; ${clinicPhone}` : ''}
+      </div>
+      <div style="margin-top:2px;font-size:6.5pt;color:#aaa">
+        ${isAr ? 'تاريخ الطباعة:' : 'Printed:'} ${new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}
+        &nbsp;|&nbsp; Rx# ${rxId.slice(-8).toUpperCase()}
+      </div>
     </div>
-    <div style="margin-top:2px;font-size:7pt">
-      ${isAr ? 'تاريخ الطباعة:' : 'Printed:'} ${new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}
-      &nbsp;|&nbsp; Rx# ${rxId.slice(-8).toUpperCase()}
-    </div>
+    ${qrSrc ? `<div class="footer-qr"><img src="${qrSrc}" width="64" height="64" alt="QR" /></div>` : ''}
   </div>
 
 </div><!-- /slip -->
@@ -7556,7 +7736,7 @@
               <select id="pay-method" class="form-control">
                 <option value="cash"><span class="ar">نقداً</span></option>
                 <option value="card"><span class="ar">بطاقة</span></option>
-                <option value="transfer"><span class="ar">تحويل</span></option>
+                
               </select>
             </div>
             <div class="form-group">
