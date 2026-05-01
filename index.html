@@ -3508,6 +3508,21 @@
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ─────────────────────────────────────
+  // LABEL CONSTANTS (must be at top — used throughout)
+  // ─────────────────────────────────────
+  const FRAME_TYPE_LABELS = {
+    full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless',
+    sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport',
+  };
+  const FRAME_MATERIAL_LABELS = {
+    metal: 'Metal', plastic: 'Plastic', titanium: 'Titanium',
+  };
+  const LENS_TYPE_LABELS = {
+    single: 'Single Vision', bifocal: 'Bifocal',
+    progressive: 'Progressive', plano: 'Plano',
+  };
+
+  // ─────────────────────────────────────
   // APP STATE
   // ─────────────────────────────────────
   const App = {
@@ -5718,18 +5733,6 @@
   const LensInv  = { editingId: null, searchTimer: null, list: [] };
   const FrameInv = { editingId: null, searchTimer: null, list: [] };
 
-  const FRAME_TYPE_LABELS = {
-    full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless',
-    sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport',
-  };
-  const FRAME_MATERIAL_LABELS = {
-    metal: 'Metal', plastic: 'Plastic', titanium: 'Titanium',
-  };
-  const LENS_TYPE_LABELS = {
-    single: 'Single Vision', bifocal: 'Bifocal',
-    progressive: 'Progressive', plano: 'Plano',
-  };
-
   // ── LENSES ──────────────────────────────────────────
 
   function debounceLensSearch(val) {
@@ -7713,6 +7716,36 @@
 
   // ── Expose printRx globally ──────────────────────
   window.printRx = printRx;
+
+  // ── Expose all onclick-called functions globally ──
+  window.selectLens        = selectLens;
+  window.selectFrame       = selectFrame;
+  window.saveRx            = saveRx;
+  window.deleteRx          = deleteRx;
+  window.openRxModal       = openRxModal;
+  window.closeRxModal      = closeRxModal;
+  window.debounceFrameSearch = debounceFrameSearch;
+  window.runLensMatch      = runLensMatch;
+  window.recalcTotal       = recalcTotal;
+  window.onRxFieldChange   = onRxFieldChange;
+  window.onLensTypeChange  = onLensTypeChange;
+  window.toggleNextVisit   = toggleNextVisit;
+  window.shiftFollowupMonth = shiftFollowupMonth;
+  window.togglePrevRxPanel = togglePrevRxPanel;
+  window.toggleRxHistoryPanel = toggleRxHistoryPanel;
+  window.saveLens          = saveLens;
+  window.deleteLens        = deleteLens;
+  window.duplicateLens     = duplicateLens;
+  window.closeLensModal    = closeLensModal;
+  window.saveFrame         = saveFrame;
+  window.deleteFrame       = deleteFrame;
+  window.duplicateFrameFrom = duplicateFrameFrom;
+  window.closeFrameModal   = closeFrameModal;
+  window.saveClinicSettings = saveClinicSettings;
+  window.navigateTo        = navigateTo;
+  window.toggleCoatingByChk = toggleCoatingByChk;
+  window.closeRxConfirm    = closeRxConfirm;
+  window.switchRestockTab  = switchRestockTab;
 
   // ═══════════════════════════════════════════════════
   // END CHUNK 13
