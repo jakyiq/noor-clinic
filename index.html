@@ -2834,6 +2834,28 @@
                 <label class="form-label"><span class="ar">نص تذييل الوصفة</span><span class="en" style="display:none">Prescription Footer</span></label>
                 <input type="text" id="s-footer" class="form-control" placeholder="e.g. شكراً لزيارتكم">
               </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span class="ar">رابط شعار العيادة (URL)</span>
+                  <span class="en" style="display:none">Clinic Logo URL</span>
+                </label>
+                <input type="url" id="s-logo-url" class="form-control" placeholder="https://…/logo.png">
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                  <span class="ar">يظهر على الوصفة المطبوعة</span>
+                  <span class="en" style="display:none">Appears on printed prescriptions</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span class="ar">رابط موقع العيادة (للـ QR)</span>
+                  <span class="en" style="display:none">Clinic Location URL (for QR)</span>
+                </label>
+                <input type="url" id="s-location-url" class="form-control" placeholder="https://maps.google.com/…">
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                  <span class="ar">يُحوَّل إلى رمز QR على الوصفة</span>
+                  <span class="en" style="display:none">Converted to a QR code on prescriptions</span>
+                </div>
+              </div>
             </div>
             <div style="margin-top:16px;display:flex;justify-content:flex-end">
               <button class="btn btn-primary" onclick="saveClinicSettings()">
@@ -4408,6 +4430,9 @@
             <div style="display:flex;align-items:center;gap:8px">
               ${payBadge}
               ${order?.remaining > 0 ? `<span style="font-size:0.8rem;color:var(--danger);font-family:var(--font-mono)">${fmt(order.remaining)}</span>` : ''}
+              <button class="btn btn-ghost btn-sm" title="${lang==='ar'?'طباعة وصفة':'Print Rx'}" onclick="event.stopPropagation();printRx('${rx.id}','${patientId}')">
+                <i data-lucide="printer"></i>
+              </button>
               <button class="btn btn-ghost btn-sm" title="Edit Rx" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')">
                 <i data-lucide="pencil"></i>
               </button>
@@ -6493,6 +6518,8 @@
     document.getElementById('s-phone').value         = c.phone   || '';
     document.getElementById('s-address').value       = c.address || '';
     document.getElementById('s-footer').value        = c.footer_text || '';
+    document.getElementById('s-logo-url').value      = c.logo_url      || '';
+    document.getElementById('s-location-url').value  = c.location_url  || '';
     document.getElementById('s-lang').value          = c.language || 'ar';
     document.getElementById('s-theme').value         = c.theme   || 'dark';
     document.getElementById('s-followup-days').value = c.next_visit_default || 30;
@@ -6564,6 +6591,8 @@
       phone:                document.getElementById('s-phone').value.trim()   || null,
       address:              document.getElementById('s-address').value.trim() || null,
       footer_text:          document.getElementById('s-footer').value.trim()  || null,
+      logo_url:             document.getElementById('s-logo-url').value.trim()     || null,
+      location_url:         document.getElementById('s-location-url').value.trim() || null,
       language:             newLang,
       theme:                newTheme,
       next_visit_default:   parseInt(document.getElementById('s-followup-days').value) || 30,
@@ -6810,8 +6839,480 @@
   }
 
 
-  // Expose openRxModal globally (called from patient table)
-  window.openRxModal = openRxModal;
+  // ═══════════════════════════════════════════════════
+  // CHUNK 13 — A5 PRESCRIPTION PRINT SLIP
+  // All data fetched live from DB. No screenshots.
+  // ═══════════════════════════════════════════════════
+
+  async function printRx(rxId, patientId) {
+    const lang = App.clinic?.language || 'ar';
+    const isAr = lang === 'ar';
+
+    // ── 1. Fetch prescription + doctor ──────────────
+    const { data: rx, error: rxErr } = await sb.from('prescriptions')
+      .select(`
+        id, exam_date, next_visit_date, checkup,
+        od_sph, od_cyl, od_axis, od_add, od_ipd, od_va, od_bcva,
+        os_sph, os_cyl, os_axis, os_add, os_ipd, os_va, os_bcva,
+        lens_type, lens_material, coatings, notes,
+        doctors(full_name, title, phone)
+      `)
+      .eq('id', rxId)
+      .single();
+
+    if (rxErr || !rx) {
+      showToast(isAr ? 'تعذر تحميل الوصفة' : 'Could not load prescription', 'error');
+      return;
+    }
+
+    // ── 2. Fetch patient ─────────────────────────────
+    const { data: patient } = await sb.from('patients')
+      .select('full_name, phone, address')
+      .eq('id', patientId)
+      .single();
+
+    // ── 3. Fetch order (financial) ───────────────────
+    const { data: order } = await sb.from('orders')
+      .select('lens_id, frame_id, lens_price, frame_price, consult_fee, discount, total, paid, remaining, payment_status, payment_method')
+      .eq('prescription_id', rxId)
+      .maybeSingle();
+
+    // ── 4. Fetch selected lens & frame names ─────────
+    let lensLabel = '—', frameLabel = '—';
+    if (order?.lens_id) {
+      const { data: l } = await sb.from('lenses')
+        .select('lens_type, material, coating, sphere, cylinder')
+        .eq('id', order.lens_id).single();
+      if (l) {
+        const sph = (Number(l.sphere) >= 0 ? '+' : '') + Number(l.sphere).toFixed(2);
+        const cyl = Number(l.cylinder || 0).toFixed(2);
+        lensLabel = [LENS_TYPE_LABELS[l.lens_type] || l.lens_type, l.material,
+                     `SPH ${sph} / CYL ${cyl}`].filter(Boolean).join(' · ');
+      }
+    }
+    if (order?.frame_id) {
+      const { data: f } = await sb.from('frames')
+        .select('brand, model, color')
+        .eq('id', order.frame_id).single();
+      if (f) frameLabel = [f.brand, f.model, f.color].filter(Boolean).join(' · ');
+    }
+
+    // ── 5. Resolve coating labels ────────────────────
+    const COAT_MAP = Object.fromEntries(COATINGS.map(c => [c.key, c.en]));
+    const coatingStr = (rx.coatings || []).map(k => COAT_MAP[k] || k).join(', ') || '—';
+
+    // ── 6. Clinic data from App.clinic ───────────────
+    const clinic       = App.clinic;
+    const clinicNameAr = clinic.name_ar || clinic.name || '';
+    const clinicNameEn = clinic.name    || '';
+    const clinicPhone  = clinic.phone   || '';
+    const clinicAddr   = clinic.address || '';
+    const clinicFooter = clinic.footer_text || '';
+    const logoUrl      = clinic.logo_url    || '';
+    const locationUrl  = clinic.location_url || '';
+
+    // ── 7. Doctor ────────────────────────────────────
+    const doc      = rx.doctors;
+    const docName  = doc ? [doc.title, doc.full_name].filter(Boolean).join(' ') : '—';
+    const docPhone = doc?.phone || '';
+
+    // ── 8. Helper: format a numeric Rx value ─────────
+    const fmtRx = v => (v == null || v === '') ? '—'
+      : (typeof v === 'number' && (v > 0)) ? `+${Number(v).toFixed(2)}`
+      : Number(v).toFixed(2);
+    const fmtAxis = v => (v == null || v === '') ? '—' : String(v) + '°';
+    const fmtVa   = v => v || '—';
+    const fmtIqd  = n  => Number(n || 0).toLocaleString('en-US') + ' IQD';
+    const fmtDate = d  => {
+      if (!d) return '—';
+      return new Date(d).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB');
+    };
+
+    // ── 9. QR code URL (api.qrserver.com — no library) ──
+    const qrSrc = locationUrl
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(locationUrl)}`
+      : '';
+
+    // ── 10. Payment method label ─────────────────────
+    const methodLabel = { cash: isAr ? 'نقداً' : 'Cash', transfer: isAr ? 'تحويل' : 'Transfer', card: 'Card' };
+
+    // ── 11. Build the HTML document ──────────────────
+    const dir = isAr ? 'rtl' : 'ltr';
+
+    const html = `<!DOCTYPE html>
+<html lang="${lang}" dir="${dir}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${isAr ? 'وصفة طبية' : 'Prescription'} — ${patient?.full_name || ''}</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+      font-size: 10pt;
+      color: #111;
+      background: #fff;
+      direction: ${dir};
+    }
+
+    /* ── A5 page setup ── */
+    @page {
+      size: A5 portrait;
+      margin: 12mm 14mm 10mm 14mm;
+    }
+
+    @media print {
+      html, body { width: 148mm; height: 210mm; }
+      .no-print  { display: none !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    /* ── Layout ── */
+    .slip { width: 100%; max-width: 148mm; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1a3a6e;
+      margin-bottom: 8px;
+    }
+    .header-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; }
+    .header-logo-placeholder {
+      width: 52px; height: 52px; border-radius: 8px;
+      background: #1a3a6e; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+    }
+    .header-logo-placeholder svg { width: 28px; height: 28px; stroke: #fff; fill: none; }
+    .header-clinic { flex: 1; min-width: 0; }
+    .clinic-name-ar { font-size: 14pt; font-weight: 700; color: #1a3a6e; line-height: 1.2; }
+    .clinic-name-en { font-size: 9pt;  font-weight: 400; color: #444; margin-top: 1px; }
+    .clinic-meta    { font-size: 8pt;  color: #666; margin-top: 3px; }
+    .header-qr { flex-shrink: 0; }
+    .header-qr img { width: 56px; height: 56px; display: block; }
+
+    /* ── Title bar ── */
+    .rx-title {
+      background: #1a3a6e; color: #fff;
+      text-align: center; font-size: 11pt; font-weight: 600;
+      padding: 4px 0; border-radius: 4px; margin-bottom: 8px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Info grid ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 16px;
+      font-size: 8.5pt;
+      margin-bottom: 8px;
+    }
+    .info-row { display: flex; gap: 4px; }
+    .info-label { color: #666; white-space: nowrap; }
+    .info-value { font-weight: 500; color: #111; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 8.5pt; font-weight: 700; color: #1a3a6e;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 1px solid #c8d6f0; padding-bottom: 2px;
+      margin: 8px 0 5px;
+    }
+
+    /* ── Rx table ── */
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 8.5pt; margin-bottom: 8px;
+    }
+    th {
+      background: #eef2fb; color: #1a3a6e;
+      font-weight: 600; padding: 4px 5px;
+      text-align: center; border: 1px solid #c8d6f0;
+      font-size: 7.5pt; white-space: nowrap;
+    }
+    td {
+      padding: 4px 5px; border: 1px solid #dde4f0;
+      text-align: center; font-family: 'IBM Plex Mono', monospace;
+      font-size: 8pt;
+    }
+    td.eye-label {
+      font-family: 'IBM Plex Sans Arabic', sans-serif;
+      font-weight: 600; color: #1a3a6e; background: #f4f7fd;
+      text-align: ${isAr ? 'right' : 'left'}; padding: 4px 8px;
+    }
+
+    /* ── Detail rows ── */
+    .detail-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 3px 16px; font-size: 8.5pt; margin-bottom: 8px;
+    }
+    .detail-row   { display: flex; gap: 4px; align-items: baseline; }
+    .detail-label { color: #666; white-space: nowrap; }
+    .detail-value { font-weight: 500; }
+    .detail-full  { grid-column: 1 / -1; display: flex; gap: 4px; align-items: baseline; }
+
+    /* ── Financials ── */
+    .fin-table { width: 100%; font-size: 8.5pt; margin-bottom: 8px; }
+    .fin-row   { display: flex; justify-content: space-between; padding: 2px 0; }
+    .fin-row.total-row {
+      font-weight: 700; font-size: 9.5pt; color: #1a3a6e;
+      border-top: 1px solid #1a3a6e; margin-top: 4px; padding-top: 4px;
+    }
+    .fin-row.remaining-row { color: #c02030; font-weight: 600; }
+    .fin-row.paid-row      { color: #0e8a58; }
+    .fin-mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Next visit / notes ── */
+    .next-visit {
+      background: #eef5ff; border: 1px solid #c8d6f0;
+      border-radius: 4px; padding: 5px 8px;
+      font-size: 8.5pt; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .next-visit-label { color: #1a3a6e; font-weight: 600; }
+    .next-visit-date  { font-weight: 700; color: #1a3a6e; }
+
+    .notes-box {
+      border: 1px solid #dde4f0; border-radius: 4px;
+      padding: 5px 8px; font-size: 8pt; color: #333;
+      margin-bottom: 6px; min-height: 24px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      border-top: 1px solid #c8d6f0; margin-top: 8px;
+      padding-top: 6px; text-align: center;
+      font-size: 7.5pt; color: #888;
+    }
+    .footer-text { margin-bottom: 2px; font-size: 8pt; color: #555; }
+
+    /* ── Print button (screen only) ── */
+    .print-btn {
+      display: block; margin: 16px auto 0;
+      padding: 8px 24px; background: #1a3a6e; color: #fff;
+      border: none; border-radius: 6px; font-size: 10pt;
+      cursor: pointer; font-family: inherit;
+    }
+    .print-btn:hover { background: #142f5a; }
+  </style>
+</head>
+<body>
+<div class="slip">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    ${logoUrl
+      ? `<img class="header-logo" src="${logoUrl}" alt="logo" />`
+      : `<div class="header-logo-placeholder">
+           <svg viewBox="0 0 24 24" stroke-width="1.5">
+             <circle cx="12" cy="12" r="3.5"/>
+             <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/>
+           </svg>
+         </div>`
+    }
+    <div class="header-clinic">
+      <div class="clinic-name-ar">${clinicNameAr}</div>
+      ${clinicNameEn && clinicNameEn !== clinicNameAr ? `<div class="clinic-name-en">${clinicNameEn}</div>` : ''}
+      <div class="clinic-meta">
+        ${clinicPhone ? `${isAr ? 'ت:' : 'Tel:'} ${clinicPhone}` : ''}
+        ${clinicPhone && clinicAddr ? ' &nbsp;|&nbsp; ' : ''}
+        ${clinicAddr || ''}
+      </div>
+    </div>
+    ${qrSrc
+      ? `<div class="header-qr"><img src="${qrSrc}" alt="QR" /></div>`
+      : ''
+    }
+  </div>
+
+  <!-- ── TITLE ── -->
+  <div class="rx-title">
+    ${isAr ? 'وصفة طبية بصرية' : 'Optical Prescription'}
+  </div>
+
+  <!-- ── PATIENT + DATE + DOCTOR ── -->
+  <div class="info-grid">
+    <div class="info-row">
+      <span class="info-label">${isAr ? 'المريض:' : 'Patient:'}</span>
+      <span class="info-value">${patient?.full_name || '—'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">${isAr ? 'التاريخ:' : 'Date:'}</span>
+      <span class="info-value">${fmtDate(rx.exam_date)}</span>
+    </div>
+    ${patient?.phone ? `
+    <div class="info-row">
+      <span class="info-label">${isAr ? 'الهاتف:' : 'Phone:'}</span>
+      <span class="info-value">${patient.phone}</span>
+    </div>` : '<div></div>'}
+    <div class="info-row">
+      <span class="info-label">${isAr ? 'الطبيب:' : 'Doctor:'}</span>
+      <span class="info-value">${docName}</span>
+    </div>
+    ${patient?.address ? `
+    <div class="info-row" style="grid-column:1/-1">
+      <span class="info-label">${isAr ? 'العنوان:' : 'Address:'}</span>
+      <span class="info-value">${patient.address}</span>
+    </div>` : ''}
+  </div>
+
+  <!-- ── RX TABLE ── -->
+  <div class="section-title">${isAr ? 'قياسات العدسة' : 'Lens Measurements'}</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:32px">${isAr ? 'العين' : 'Eye'}</th>
+        <th>Sphere</th>
+        <th>Cylinder</th>
+        <th>Axis</th>
+        <th>Addition</th>
+        <th>IPD</th>
+        <th>VA</th>
+        <th>BCVA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="eye-label">OD ${isAr ? '(يمين)' : '(R)'}</td>
+        <td>${fmtRx(rx.od_sph)}</td>
+        <td>${fmtRx(rx.od_cyl)}</td>
+        <td>${fmtAxis(rx.od_axis)}</td>
+        <td>${fmtRx(rx.od_add)}</td>
+        <td>${rx.od_ipd ?? '—'}</td>
+        <td>${fmtVa(rx.od_va)}</td>
+        <td>${fmtVa(rx.od_bcva)}</td>
+      </tr>
+      <tr>
+        <td class="eye-label">OS ${isAr ? '(يسار)' : '(L)'}</td>
+        <td>${fmtRx(rx.os_sph)}</td>
+        <td>${fmtRx(rx.os_cyl)}</td>
+        <td>${fmtAxis(rx.os_axis)}</td>
+        <td>${fmtRx(rx.os_add)}</td>
+        <td>${rx.os_ipd ?? '—'}</td>
+        <td>${fmtVa(rx.os_va)}</td>
+        <td>${fmtVa(rx.os_bcva)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── LENS & FRAME DETAILS ── -->
+  <div class="section-title">${isAr ? 'تفاصيل العدسة والإطار' : 'Lens & Frame Details'}</div>
+  <div class="detail-grid">
+    <div class="detail-row">
+      <span class="detail-label">${isAr ? 'نوع العدسة:' : 'Lens Type:'}</span>
+      <span class="detail-value">${LENS_TYPE_LABELS[rx.lens_type] || rx.lens_type || '—'}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">${isAr ? 'المادة:' : 'Material:'}</span>
+      <span class="detail-value">${rx.lens_material || '—'}</span>
+    </div>
+    <div class="detail-full">
+      <span class="detail-label">${isAr ? 'العدسة المختارة:' : 'Selected Lens:'}</span>
+      <span class="detail-value">${lensLabel}</span>
+    </div>
+    <div class="detail-full">
+      <span class="detail-label">${isAr ? 'الإطار المختار:' : 'Selected Frame:'}</span>
+      <span class="detail-value">${frameLabel}</span>
+    </div>
+    <div class="detail-full">
+      <span class="detail-label">${isAr ? 'الطلاءات:' : 'Coatings:'}</span>
+      <span class="detail-value">${coatingStr}</span>
+    </div>
+  </div>
+
+  <!-- ── FINANCIALS ── -->
+  ${order ? `
+  <div class="section-title">${isAr ? 'الفاتورة' : 'Invoice'}</div>
+  <div class="fin-table">
+    ${order.lens_price  ? `<div class="fin-row"><span>${isAr ? 'سعر العدسة' : 'Lens Price'}</span><span class="fin-mono">${fmtIqd(order.lens_price)}</span></div>` : ''}
+    ${order.frame_price ? `<div class="fin-row"><span>${isAr ? 'سعر الإطار' : 'Frame Price'}</span><span class="fin-mono">${fmtIqd(order.frame_price)}</span></div>` : ''}
+    ${order.consult_fee ? `<div class="fin-row"><span>${isAr ? 'رسوم الكشف' : 'Consult Fee'}</span><span class="fin-mono">${fmtIqd(order.consult_fee)}</span></div>` : ''}
+    ${order.discount    ? `<div class="fin-row"><span>${isAr ? 'خصم' : 'Discount'}</span><span class="fin-mono" style="color:#c02030">- ${fmtIqd(order.discount)}</span></div>` : ''}
+    <div class="fin-row total-row">
+      <span>${isAr ? 'الإجمالي' : 'Total'}</span>
+      <span class="fin-mono">${fmtIqd(order.total)}</span>
+    </div>
+    ${order.paid ? `<div class="fin-row paid-row"><span>${isAr ? 'المدفوع' : 'Paid'}</span><span class="fin-mono">${fmtIqd(order.paid)}</span></div>` : ''}
+    ${order.remaining > 0 ? `<div class="fin-row remaining-row"><span>${isAr ? 'المتبقي' : 'Remaining'}</span><span class="fin-mono">${fmtIqd(order.remaining)}</span></div>` : ''}
+    ${order.payment_method ? `<div class="fin-row" style="color:#666;font-size:7.5pt"><span>${isAr ? 'طريقة الدفع' : 'Payment Method'}</span><span>${methodLabel[order.payment_method] || order.payment_method}</span></div>` : ''}
+  </div>` : ''}
+
+  <!-- ── NEXT VISIT ── -->
+  ${rx.checkup && rx.next_visit_date ? `
+  <div class="next-visit">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a3a6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span class="next-visit-label">${isAr ? 'موعد المتابعة:' : 'Next Visit:'}</span>
+    <span class="next-visit-date">${fmtDate(rx.next_visit_date)}</span>
+  </div>` : ''}
+
+  <!-- ── NOTES ── -->
+  ${rx.notes ? `
+  <div class="section-title">${isAr ? 'ملاحظات' : 'Notes'}</div>
+  <div class="notes-box">${rx.notes}</div>` : ''}
+
+  <!-- ── DOCTOR SIGNATURE LINE ── -->
+  <div style="display:flex;justify-content:${isAr ? 'flex-start' : 'flex-end'};margin-top:10px;margin-bottom:8px">
+    <div style="text-align:center;min-width:110px">
+      <div style="border-top:1px solid #999;padding-top:4px;font-size:7.5pt;color:#555">
+        ${docName}
+        ${docPhone ? `<br/>${isAr ? 'ت:' : 'Tel:'} ${docPhone}` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <div class="footer">
+    ${clinicFooter ? `<div class="footer-text">${clinicFooter}</div>` : ''}
+    <div>
+      ${clinicNameAr}
+      ${clinicPhone ? ` &nbsp;|&nbsp; ${clinicPhone}` : ''}
+    </div>
+    <div style="margin-top:2px;font-size:7pt">
+      ${isAr ? 'تاريخ الطباعة:' : 'Printed:'} ${new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}
+      &nbsp;|&nbsp; Rx# ${rxId.slice(-8).toUpperCase()}
+    </div>
+  </div>
+
+</div><!-- /slip -->
+
+<button class="print-btn no-print" onclick="window.print()">
+  ${isAr ? 'طباعة' : 'Print'}
+</button>
+
+<script>
+  // Auto-print when opened as a popup
+  if (window.opener) { window.focus(); window.print(); }
+<\/script>
+</body>
+</html>`;
+
+    // ── 12. Open in a new window ─────────────────────
+    const win = window.open('', '_blank', 'width=600,height=850,menubar=no,toolbar=no');
+    if (!win) {
+      showToast(isAr ? 'يرجى السماح بالنوافذ المنبثقة' : 'Please allow popups for this site', 'warning');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
+
+  // ── Expose printRx globally ──────────────────────
+  window.printRx = printRx;
+
+  // ═══════════════════════════════════════════════════
+  // END CHUNK 13
+  // ═══════════════════════════════════════════════════
+
+
 
   document.addEventListener('DOMContentLoaded', init);
   </script>
