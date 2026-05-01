@@ -3244,12 +3244,36 @@
                         <option value="contact">Contact Lens</option>
                       </select>
                     </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                      <label class="form-label">
+                        <span class="ar">عدد العدسات</span><span class="en" style="display:none">Number of Lenses</span>
+                      </label>
+                      <div style="display:flex;gap:8px">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);flex:1;background:var(--bg-input);transition:var(--transition)" id="lens-count-label-1">
+                          <input type="radio" name="rx-lens-count" id="rx-lens-count-1" value="1" onchange="document.getElementById('rx-lens-count').value='1';recalcTotal();updateLensCountLabels()" style="accent-color:var(--accent)" />
+                          <span style="font-weight:600">1</span>
+                          <span style="font-size:0.8rem;color:var(--text-muted)"><span class="ar">عدسة</span><span class="en" style="display:none">Lens</span></span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:2px solid var(--accent);border-radius:var(--radius-sm);flex:1;background:var(--accent-glow);transition:var(--transition)" id="lens-count-label-2">
+                          <input type="radio" name="rx-lens-count" id="rx-lens-count-2" value="2" checked onchange="document.getElementById('rx-lens-count').value='2';recalcTotal();updateLensCountLabels()" style="accent-color:var(--accent)" />
+                          <span style="font-weight:600">2</span>
+                          <span style="font-size:0.8rem;color:var(--text-muted)"><span class="ar">عدسة (كلاهما)</span><span class="en" style="display:none">Lenses (both)</span></span>
+                        </label>
+                      </div>
+                      <input type="hidden" id="rx-lens-count" value="2" />
+                    </div>
                   </div>
                   <div class="form-group">
                     <label class="form-label" style="margin-bottom:10px">
                       <span class="ar">الطلاءات والإضافات</span><span class="en" style="display:none">Coatings &amp; Options</span>
                     </label>
-                    <div class="coating-grid" id="rx-coatings-grid"></div>
+                    <div id="rx-coatings-scroll-wrap" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px;background:var(--bg-input)">
+                      <div id="rx-coatings-grid" style="display:flex;flex-direction:column;gap:2px"></div>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                      <span class="ar">الطلاءات المتاحة من المخزون الحالي</span>
+                      <span class="en" style="display:none">Coatings available from current inventory</span>
+                    </div>
                   </div>
                   <div id="rx-lens-match-section" style="margin-top:14px">
                     <div style="font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px">
@@ -4840,24 +4864,48 @@
     patientId:    null,
     patientName:  null,
     editingId:    null,      // prescription id being edited
-    selectedLensId:  null,   // lens inventory id chosen
+    selectedLensId:  null,   // legacy / kept for compatibility
+    selectedOdLensId: null,  // OD lens inventory id
+    selectedOsLensId: null,  // OS lens inventory id
     selectedFrameId: null,   // frame inventory id chosen
     frameSearchTimer: null,
     rxChangeTimer: null,
   };
 
-  // ── Build coatings grid ─────────────────────────
-  function buildCoatingsGrid() {
+  // ── Build coatings list from inventory ──────────
+  async function buildCoatingsGrid() {
     const grid = document.getElementById('rx-coatings-grid');
-    // Coatings always in English per spec
-    grid.innerHTML = COATINGS.map(c => `
-      <label class="coating-toggle" id="coating-${c.key}">
-        <input type="checkbox" id="chk-${c.key}" onchange="toggleCoatingByChk(this,'${c.key}')" />
-        <span class="coating-check"><i data-lucide="check"></i></span>
-        <span class="coating-label">${c.en}</span>
+    const lang = App.clinic?.language || 'ar';
+    grid.innerHTML = `<div style="font-size:0.8rem;color:var(--text-muted);padding:6px 8px;display:flex;align-items:center;gap:6px"><div class="spinner"></div></div>`;
+
+    // Fetch unique coatings from lenses inventory
+    let inventoryCoatings = [];
+    try {
+      const { data: lensRows } = await sb.from('lenses')
+        .select('coating')
+        .eq('clinic_id', App.clinic.id)
+        .not('coating', 'is', null)
+        .gt('quantity', 0);
+      if (lensRows) {
+        const uniqueCoatings = [...new Set(lensRows.map(l => l.coating).filter(Boolean))].sort();
+        inventoryCoatings = uniqueCoatings.map(c => ({ key: c.toLowerCase().replace(/[^a-z0-9]/g,'_'), en: c }));
+      }
+    } catch(e) {}
+
+    // If no inventory coatings found, fall back to preset list
+    const coatingList = inventoryCoatings.length ? inventoryCoatings : COATINGS;
+
+    if (!coatingList.length) {
+      grid.innerHTML = `<div style="font-size:0.8rem;color:var(--text-muted);padding:8px">${lang==='ar'?'لا توجد طلاءات في المخزون':'No coatings in inventory'}</div>`;
+      return;
+    }
+
+    grid.innerHTML = coatingList.map(c => `
+      <label class="coating-toggle" id="coating-${c.key}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)">
+        <input type="checkbox" id="chk-${c.key}" onchange="toggleCoatingByChk(this,'${c.key}')" style="accent-color:var(--accent);width:15px;height:15px;flex-shrink:0" />
+        <span class="coating-label" style="font-size:0.875rem">${c.en}</span>
       </label>
     `).join('');
-    lucide.createIcons();
   }
 
   function toggleCoatingByChk(chk, key) {
@@ -4877,26 +4925,32 @@
   }
 
   function getSelectedCoatings() {
-    return COATINGS
-      .filter(c => {
-        const chk = document.getElementById('chk-' + c.key);
-        return chk && chk.checked;
-      })
-      .map(c => c.key);
+    const checked = [];
+    document.querySelectorAll('#rx-coatings-grid input[type="checkbox"]').forEach(chk => {
+      if (chk.checked) {
+        // Use the label text as the coating value for inventory-sourced coatings
+        const label = chk.closest('label')?.querySelector('.coating-label');
+        const val = label ? label.textContent.trim() : chk.id.replace('chk-','');
+        checked.push(val);
+      }
+    });
+    return checked;
   }
 
   function setCoatings(keys = []) {
-    COATINGS.forEach(c => {
-      const label = document.getElementById('coating-' + c.key);
-      const chk   = document.getElementById('chk-' + c.key);
-      if (!label || !chk) return;
-      if (keys.includes(c.key)) {
-        chk.checked = true;
-        label.classList.add('active');
-      } else {
-        chk.checked = false;
-        label.classList.remove('active');
-      }
+    // keys can be coating key strings or coating label strings
+    document.querySelectorAll('#rx-coatings-grid input[type="checkbox"]').forEach(chk => {
+      const label = chk.closest('label')?.querySelector('.coating-label');
+      const labelText = label ? label.textContent.trim() : '';
+      const keyFromId = chk.id.replace('chk-','');
+      const shouldCheck = keys.some(k =>
+        k === keyFromId ||
+        k === labelText ||
+        k.toLowerCase() === labelText.toLowerCase() ||
+        labelText.toLowerCase().includes(k.toLowerCase())
+      );
+      chk.checked = shouldCheck;
+      toggleCoatingByChk(chk, keyFromId);
     });
   }
 
@@ -4906,6 +4960,8 @@
     Rx.patientName = patientName;
     Rx.editingId   = rxId;
     Rx.selectedLensId  = null;
+    Rx.selectedOdLensId = null;
+    Rx.selectedOsLensId = null;
     Rx.selectedFrameId = null;
 
     const lang = App.clinic?.language || 'ar';
@@ -4967,6 +5023,9 @@
     document.getElementById('rx-frame-material').value = '';
     document.getElementById('rx-payment-method').value = 'cash';
     document.getElementById('rx-checkup').checked      = false;
+    // Reset lens count to 2
+    const lensCountSel = document.getElementById('rx-lens-count');
+    if (lensCountSel) lensCountSel.value = '2';
     document.getElementById('rx-next-visit-group').style.display = 'none';
     document.getElementById('prev-rx-panel').style.display       = 'none';
 
@@ -5125,7 +5184,10 @@
       fill('rx-paid',         order.paid);
       document.getElementById('rx-payment-method').value = order.payment_method || 'cash';
       if (order.frame_id) Rx.selectedFrameId = order.frame_id;
-      if (order.lens_id)  Rx.selectedLensId  = order.lens_id;
+      if (order.lens_id)  {
+        Rx.selectedLensId  = order.lens_id;
+        Rx.selectedOdLensId = order.lens_id;
+      }
     }
 
     // Populate frame name — first from rx.frame_name, then from inventory
@@ -5266,7 +5328,6 @@
 
     const lensType = document.getElementById('rx-lens-type').value || null;
 
-    // Build a broad query then filter client-side with ±0.25
     let q = sb.from('lenses')
       .select('id, lens_type, material, coating, sphere, cylinder, quantity, sell_price')
       .eq('clinic_id', App.clinic.id)
@@ -5289,20 +5350,19 @@
 
     const TOLERANCE = 0.25;
     function withinTol(rx, inv) {
-      if (rx == null || isNaN(rx)) return true; // no Rx entered = match any
+      if (rx == null || isNaN(rx)) return true;
       return Math.abs(rx - inv) <= TOLERANCE;
     }
 
-    // Match: the single sphere/cylinder value in inventory against each eye
-    const matches = lenses.filter(l => {
-      const odOk = withinTol(!isNaN(odSph) ? odSph : null, l.sphere) &&
-                   withinTol(!isNaN(odCyl) ? odCyl : null, l.cylinder);
-      const osOk = withinTol(!isNaN(osSph) ? osSph : null, l.sphere) &&
-                   withinTol(!isNaN(osCyl) ? osCyl : null, l.cylinder);
-      return odOk || osOk; // match if either eye fits
-    });
+    // Separate matches per eye
+    const odMatches = !isNaN(odSph) ? lenses.filter(l =>
+      withinTol(odSph, l.sphere) && withinTol(!isNaN(odCyl) ? odCyl : null, l.cylinder)
+    ) : [];
+    const osMatches = !isNaN(osSph) ? lenses.filter(l =>
+      withinTol(osSph, l.sphere) && withinTol(!isNaN(osCyl) ? osCyl : null, l.cylinder)
+    ) : [];
 
-    if (!matches.length) {
+    if (!odMatches.length && !osMatches.length) {
       container.innerHTML = `<div class="lens-match-result">
         <div class="lens-match-status none">
           <i data-lucide="search-x"></i>
@@ -5314,56 +5374,82 @@
       return;
     }
 
-    const items = matches.slice(0, 8).map(l => {
-      const name     = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
-      const rxStr    = `SPH ${(l.sphere >= 0 ? '+' : '')}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
-      const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
-      const isSelected = Rx.selectedLensId === l.id;
-      const priceStr = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
-      const selStyle = isSelected
-        ? 'border-color:var(--success);background:rgba(29,184,126,0.08);'
-        : '';
+    function renderLensItems(matches, eye) {
+      return matches.slice(0, 8).map(l => {
+        const name     = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
+        const rxStr    = `SPH ${(l.sphere >= 0 ? '+' : '')}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
+        const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
+        const selectedId = eye === 'od' ? Rx.selectedOdLensId : Rx.selectedOsLensId;
+        const isSelected = selectedId === l.id;
+        const priceStr = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
+        const selStyle = isSelected
+          ? 'border-color:var(--success);background:rgba(29,184,126,0.08);'
+          : '';
 
-      return `
-        <div class="lens-match-item" id="lens-card-${l.id}"
-          style="cursor:pointer;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:4px;border:1px solid var(--border);${selStyle}display:flex;align-items:center;gap:10px;"
-          onclick="selectLens('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}')">
-          <div style="width:16px;height:16px;border-radius:50%;border:2px solid ${isSelected ? 'var(--success)' : 'var(--border)'};background:${isSelected ? 'var(--success)' : 'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-            ${isSelected ? '<div style="width:6px;height:6px;border-radius:50%;background:#fff"></div>' : ''}
-          </div>
-          <div class="lens-match-item-label" style="flex:1;min-width:0">
-            <div class="lens-match-item-name">${name}</div>
-            <div class="lens-match-item-vals">${rxStr}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
-            <span class="lens-match-item-qty" style="color:var(--text-primary);font-weight:600">${priceStr}</span>
-            <span class="lens-match-item-qty ${qtyClass}">${lang === 'ar' ? 'ك: ' : 'Qty: '}${l.quantity}</span>
-          </div>
-        </div>`;
-    }).join('');
+        return `
+          <div class="lens-match-item" id="lens-card-${eye}-${l.id}"
+            style="cursor:pointer;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:4px;border:1px solid var(--border);${selStyle}display:flex;align-items:center;gap:10px;"
+            onclick="selectLensForEye('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}', '${eye}')">
+            <div style="width:16px;height:16px;border-radius:50%;border:2px solid ${isSelected ? 'var(--success)' : 'var(--border)'};background:${isSelected ? 'var(--success)' : 'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              ${isSelected ? '<div style="width:6px;height:6px;border-radius:50%;background:#fff"></div>' : ''}
+            </div>
+            <div class="lens-match-item-label" style="flex:1;min-width:0">
+              <div class="lens-match-item-name">${name}</div>
+              <div class="lens-match-item-vals">${rxStr}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
+              <span class="lens-match-item-qty" style="color:var(--text-primary);font-weight:600">${priceStr}</span>
+              <span class="lens-match-item-qty ${qtyClass}">${lang === 'ar' ? 'ك: ' : 'Qty: '}${l.quantity}</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
 
-    container.innerHTML = `<div class="lens-match-result" style="background:transparent;border:none;padding:0;margin-top:4px;">
-      <div class="lens-match-status found" style="margin-bottom:6px;">
-        <i data-lucide="check-circle"></i>
-        <span class="ar">وُجد ${matches.length} تطابق — اختر العدسة</span>
-        <span class="en" style="display:none">${matches.length} match(es) found — tap to select</span>
-      </div>
-      ${items}
-    </div>`;
+    let html = `<div class="lens-match-result" style="background:transparent;border:none;padding:0;margin-top:4px;">`;
 
+    if (odMatches.length) {
+      html += `
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
+          <span>OD ${lang==='ar'?'(يمين)':'(Right)'} — ${odMatches.length} ${lang==='ar'?'تطابق':'match(es)'}</span>
+        </div>
+        ${renderLensItems(odMatches, 'od')}`;
+    }
+    if (osMatches.length) {
+      html += `
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin-top:${odMatches.length?'10px':'0'};margin-bottom:4px;display:flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;flex-shrink:0"></span>
+          <span>OS ${lang==='ar'?'(يسار)':'(Left)'} — ${osMatches.length} ${lang==='ar'?'تطابق':'match(es)'}</span>
+        </div>
+        ${renderLensItems(osMatches, 'os')}`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
     lucide.createIcons();
   }
 
-  function selectLens(lensId, price, lensType, material) {
-    Rx.selectedLensId = lensId;
-    document.getElementById('rx-lens-price').value = price || '';
+  function selectLensForEye(lensId, price, lensType, material, eye) {
+    if (eye === 'od') {
+      Rx.selectedOdLensId = lensId;
+    } else {
+      Rx.selectedOsLensId = lensId;
+    }
+    // Keep legacy field as the first selected (for backward compat)
+    Rx.selectedLensId = Rx.selectedOdLensId || Rx.selectedOsLensId;
+
+    // Update auto-fill fields only if not already set
     if (lensType && !document.getElementById('rx-lens-type').value)
       document.getElementById('rx-lens-type').value = lensType;
     if (material && !document.getElementById('rx-lens-material').value)
       document.getElementById('rx-lens-material').value = material;
-    // Visually update all lens cards
-    document.querySelectorAll('[id^="lens-card-"]').forEach(card => {
-      const isThis = card.id === 'lens-card-' + lensId;
+
+    // Update price based on lens count * price
+    updateLensPrice();
+
+    // Visually update cards for this eye
+    document.querySelectorAll(`[id^="lens-card-${eye}-"]`).forEach(card => {
+      const isThis = card.id === `lens-card-${eye}-` + lensId;
       card.style.borderColor    = isThis ? 'var(--success)' : 'var(--border)';
       card.style.background     = isThis ? 'rgba(29,184,126,0.08)' : '';
       const dot = card.querySelector('div');
@@ -5373,6 +5459,16 @@
         dot.innerHTML = isThis ? '<div style="width:6px;height:6px;border-radius:50%;background:#fff"></div>' : '';
       }
     });
+  }
+
+  function updateLensPrice() {
+    // When only one lens type is selected (same ID for both eyes or count=1), use that price
+    // When OD and OS have different lenses, sum prices
+    // Controlled by rx-lens-count selector
+    const countSel = document.getElementById('rx-lens-count');
+    const count = countSel ? parseInt(countSel.value) : 2;
+    const lensPrice = parseFloat(document.getElementById('rx-lens-price').value) || 0;
+    // Price field is per-lens; recalcTotal multiplies by count
     recalcTotal();
   }
 
@@ -5444,7 +5540,10 @@
 
   // ── Recalc totals ───────────────────────────────
   function recalcTotal() {
-    const lens    = parseFloat(document.getElementById('rx-lens-price')?.value)  || 0;
+    const lensUnit = parseFloat(document.getElementById('rx-lens-price')?.value)  || 0;
+    const lensCountSel = document.getElementById('rx-lens-count');
+    const lensCount = lensCountSel ? parseInt(lensCountSel.value) : 2;
+    const lens    = lensUnit * lensCount;
     const frame   = parseFloat(document.getElementById('rx-frame-price')?.value) || 0;
     const consult = parseFloat(document.getElementById('rx-consult-fee')?.value) || 0;
     const disc    = parseFloat(document.getElementById('rx-discount')?.value)    || 0;
@@ -5465,6 +5564,22 @@
 
     const remRow = document.getElementById('rx-remaining-row');
     if (remRow) remRow.style.display = remaining > 0 ? '' : 'none';
+  }
+
+  function updateLensCountLabels() {
+    const val = document.getElementById('rx-lens-count')?.value || '2';
+    const label1 = document.getElementById('lens-count-label-1');
+    const label2 = document.getElementById('lens-count-label-2');
+    if (label1) {
+      label1.style.borderColor = val === '1' ? 'var(--accent)' : 'var(--border)';
+      label1.style.background  = val === '1' ? 'var(--accent-glow)' : 'var(--bg-input)';
+      label1.style.borderWidth = val === '1' ? '2px' : '1px';
+    }
+    if (label2) {
+      label2.style.borderColor = val === '2' ? 'var(--accent)' : 'var(--border)';
+      label2.style.background  = val === '2' ? 'var(--accent-glow)' : 'var(--bg-input)';
+      label2.style.borderWidth = val === '2' ? '2px' : '1px';
+    }
   }
 
   // ── Save Rx ─────────────────────────────────────
@@ -5567,7 +5682,10 @@
     }
 
     // ── Save order ──
-    const lensPrice  = floatOrNull('rx-lens-price')  || 0;
+    const lensUnitPrice = floatOrNull('rx-lens-price') || 0;
+    const lensCountSel  = document.getElementById('rx-lens-count');
+    const lensCount     = lensCountSel ? parseInt(lensCountSel.value) : 2;
+    const lensPrice  = lensUnitPrice * lensCount;
     const framePrice = floatOrNull('rx-frame-price') || 0;
     const consult    = floatOrNull('rx-consult-fee') || 0;
     const discount   = floatOrNull('rx-discount')    || 0;
@@ -5580,7 +5698,7 @@
       clinic_id:      App.clinic.id,
       patient_id:     Rx.patientId,
       prescription_id: rxId,
-      lens_id:        Rx.selectedLensId || null,
+      lens_id:        Rx.selectedOdLensId || Rx.selectedLensId || null,
       frame_id:       Rx.selectedFrameId || null,
       lens_price:     lensPrice,
       frame_price:    framePrice,
@@ -5631,11 +5749,35 @@
 
     // Deduct inventory quantities if new prescription
     if (!Rx.editingId) {
-      if (Rx.selectedLensId) {
-        // Fetch current qty then decrement
-        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedLensId).single();
+      // Deduct OD lens
+      if (Rx.selectedOdLensId) {
+        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedOdLensId).single();
         if (lensRow && lensRow.quantity > 0) {
-          await sb.from('lenses').update({ quantity: lensRow.quantity - 1 }).eq('id', Rx.selectedLensId);
+          await sb.from('lenses').update({ quantity: lensRow.quantity - 1 }).eq('id', Rx.selectedOdLensId);
+        }
+      }
+      // Deduct OS lens (if different from OD)
+      if (Rx.selectedOsLensId && Rx.selectedOsLensId !== Rx.selectedOdLensId) {
+        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedOsLensId).single();
+        if (lensRow && lensRow.quantity > 0) {
+          await sb.from('lenses').update({ quantity: lensRow.quantity - 1 }).eq('id', Rx.selectedOsLensId);
+        }
+      } else if (Rx.selectedOsLensId && Rx.selectedOsLensId === Rx.selectedOdLensId) {
+        // Same lens for both eyes — deduct 1 more (total 2 from same row)
+        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedOsLensId).single();
+        if (lensRow && lensRow.quantity > 0) {
+          await sb.from('lenses').update({ quantity: Math.max(0, lensRow.quantity - 1) }).eq('id', Rx.selectedOsLensId);
+        }
+      }
+      // Legacy path: if only selectedLensId is set (no per-eye), deduct by lens count
+      if (!Rx.selectedOdLensId && !Rx.selectedOsLensId && Rx.selectedLensId) {
+        const lensCountSel = document.getElementById('rx-lens-count');
+        const count = lensCountSel ? parseInt(lensCountSel.value) : 2;
+        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedLensId).single();
+        if (lensRow && lensRow.quantity >= count) {
+          await sb.from('lenses').update({ quantity: lensRow.quantity - count }).eq('id', Rx.selectedLensId);
+        } else if (lensRow && lensRow.quantity > 0) {
+          await sb.from('lenses').update({ quantity: 0 }).eq('id', Rx.selectedLensId);
         }
       }
       if (Rx.selectedFrameId) {
@@ -6029,7 +6171,7 @@
     delBtn.style.display = 'none';
     if (dupBtn) dupBtn.style.display = 'none';
 
-    ['frame-brand','frame-model','frame-color','frame-size','frame-material','frame-notes'].forEach(id => {
+    ['frame-brand','frame-color','frame-material','frame-notes'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('frame-qty').value        = '';
@@ -6046,10 +6188,8 @@
       const { data: f } = await sb.from('frames').select('*').eq('id', frameId).single();
       if (f) {
         document.getElementById('frame-brand').value       = f.brand || '';
-        document.getElementById('frame-model').value       = f.model || '';
         document.getElementById('frame-type').value        = f.frame_type || '';
         document.getElementById('frame-color').value       = f.color || '';
-        document.getElementById('frame-size').value        = f.size || '';
         document.getElementById('frame-material').value    = f.material || '';
 
         document.getElementById('frame-qty').value         = f.quantity ?? 0;
@@ -6089,10 +6229,8 @@
     const payload = {
       clinic_id:     App.clinic.id,
       brand:         document.getElementById('frame-brand').value.trim()    || null,
-      model:         document.getElementById('frame-model').value.trim()    || null,
       frame_type:    document.getElementById('frame-type').value            || null,
       color:         document.getElementById('frame-color').value.trim()    || null,
-      size:          document.getElementById('frame-size').value.trim()     || null,
       material:      document.getElementById('frame-material').value.trim() || null,
       quantity:      qty,
       restock_level: parseInt(document.getElementById('frame-restock').value) || 1,
@@ -6142,10 +6280,8 @@
     FrameInv.editingId = null;
     await openFrameModal();
     document.getElementById('frame-brand').value       = f.brand || '';
-    document.getElementById('frame-model').value       = f.model || '';
     document.getElementById('frame-type').value        = f.frame_type || '';
     document.getElementById('frame-color').value       = f.color || '';
-    document.getElementById('frame-size').value        = f.size || '';
     document.getElementById('frame-material').value    = f.material || '';
     document.getElementById('frame-qty').value         = f.quantity ?? 0;
     document.getElementById('frame-restock').value     = f.restock_level ?? 1;
@@ -7715,7 +7851,9 @@
   window.printRx = printRx;
 
   // ── Expose all onclick-called functions globally ──
-  window.selectLens        = selectLens;
+  window.selectLens        = selectLensForEye; // keep legacy name
+  window.selectLensForEye  = selectLensForEye;
+  window.updateLensPrice   = updateLensPrice;
   window.selectFrame       = selectFrame;
   window.saveRx            = saveRx;
   window.deleteRx          = deleteRx;
@@ -7740,6 +7878,7 @@
   window.closeFrameModal   = closeFrameModal;
   window.saveClinicSettings = saveClinicSettings;
   window.navigateTo        = navigateTo;
+  window.updateLensCountLabels = updateLensCountLabels;
   window.toggleCoatingByChk = toggleCoatingByChk;
   window.closeRxConfirm    = closeRxConfirm;
   window.switchRestockTab  = switchRestockTab;
@@ -7858,10 +7997,6 @@
                 <input type="text" id="frame-brand" class="form-control" />
               </div>
               <div class="form-group">
-                <label class="form-label"><span class="ar">الموديل</span><span class="en" style="display:none">Model</span></label>
-                <input type="text" id="frame-model" class="form-control" />
-              </div>
-              <div class="form-group">
                 <label class="form-label"><span class="ar">النوع</span><span class="en" style="display:none">Type</span></label>
                 <select id="frame-type" class="form-control">
                   <option value="">—</option>
@@ -7876,10 +8011,6 @@
               <div class="form-group">
                 <label class="form-label"><span class="ar">اللون</span><span class="en" style="display:none">Color</span></label>
                 <input type="text" id="frame-color" class="form-control" />
-              </div>
-              <div class="form-group">
-                <label class="form-label"><span class="ar">المقاس</span><span class="en" style="display:none">Size</span></label>
-                <input type="text" id="frame-size" class="form-control" placeholder="e.g. 52-18-140" />
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">المادة</span><span class="en" style="display:none">Material</span></label>
