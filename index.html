@@ -250,7 +250,7 @@
       position: fixed;
       inset: 0;
       background: var(--bg-base);
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -1866,6 +1866,7 @@
     <div class="loader-logo">نور <span>Noor</span></div>
     <div class="spinner lg"></div>
   </div>
+  <script>document.getElementById('app-loader').style.display='flex';</script>
 
   <!-- ═══════════════════════════════════
        AUTH SCREEN
@@ -3323,34 +3324,47 @@
   // INIT
   // ─────────────────────────────────────
   async function init() {
-    // Apply saved theme immediately to avoid flash
-    const savedTheme = localStorage.getItem('noor_theme') || 'dark';
-    applyTheme(savedTheme, false);
-
-    // Apply saved language
-    const savedLang = localStorage.getItem('noor_lang') || 'ar';
-    applyLanguage(savedLang, false);
-
-    lucide.createIcons();
-
-    // Check existing session
-    const { data: { session } } = await sb.auth.getSession();
-
-    if (session) {
-      await loadAppForUser(session.user);
-    } else {
+    // Safety net — if anything hangs for 10s, show auth screen
+    const loaderTimeout = setTimeout(() => {
+      console.error('init() timed out — forcing auth screen');
       showScreen('auth');
-    }
+    }, 10000);
 
-    // Listen for auth changes
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+    try {
+      // Apply saved theme immediately to avoid flash
+      const savedTheme = localStorage.getItem('noor_theme') || 'dark';
+      applyTheme(savedTheme, false);
+
+      // Apply saved language
+      const savedLang = localStorage.getItem('noor_lang') || 'ar';
+      applyLanguage(savedLang, false);
+
+      lucide.createIcons();
+
+      // Check existing session
+      const { data: { session } } = await sb.auth.getSession();
+
+      if (session) {
         await loadAppForUser(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        App.user = null; App.clinicUser = null; App.clinic = null;
+      } else {
         showScreen('auth');
       }
-    });
+
+      // Listen for auth changes
+      sb.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          await loadAppForUser(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          App.user = null; App.clinicUser = null; App.clinic = null;
+          showScreen('auth');
+        }
+      });
+    } catch (err) {
+      console.error('init() error:', err);
+      showScreen('auth');
+    } finally {
+      clearTimeout(loaderTimeout);
+    }
   }
 
   // ─────────────────────────────────────
@@ -3398,7 +3412,10 @@
 
       App.license = licData;
 
-      if (!licData?.allowed) {
+      // If RPC doesn't exist yet or errors, allow access (dev/setup mode)
+      if (licErr) {
+        console.warn('check_license RPC error (allowing access):', licErr.message);
+      } else if (!licData?.allowed) {
         showScreen('license');
         return;
       }
@@ -4223,341 +4240,6 @@
     fetchPatients();
   }
 
-  // ── Patient Ledger ───────────────────────────────────────────────
-  const LedgerState = { patientId: null, patientName: null, orderId: null, remaining: 0, patientIdForPay: null };
-
-  async function openPatientLedger(patientId, patientName) {
-    const lang  = App.clinic?.language || 'ar';
-    const modal = document.getElementById('patient-ledger-modal');
-
-    // Header
-    document.getElementById('ledger-pt-name').textContent   = patientName;
-    document.getElementById('ledger-pt-phone').textContent  = '';
-    document.getElementById('ledger-pt-avatar').textContent = patientName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    document.getElementById('ledger-summary-bar').innerHTML = '';
-    document.getElementById('ledger-pt-body').innerHTML     = '<div class="empty-state"><div class="spinner lg"></div></div>';
-
-    LedgerState.patientId   = patientId;
-    LedgerState.patientName = patientName;
-
-    document.getElementById('ledger-edit-btn').onclick   = () => { closePatientLedger(); openPatientModal(patientId); };
-    document.getElementById('ledger-new-rx-btn').onclick = () => { closePatientLedger(); openRxModal(patientId, patientName); };
-
-    modal.classList.remove('hidden');
-    lucide.createIcons();
-
-    // Fetch patient phone
-    const { data: pt } = await sb.from('patients').select('phone').eq('id', patientId).single();
-    if (pt?.phone) document.getElementById('ledger-pt-phone').textContent = pt.phone;
-
-    // Fetch all prescriptions with orders + payments
-    const { data: rxs, error } = await sb.from('prescriptions')
-      .select(`
-        id, exam_date, next_visit_date, checkup,
-        od_sph, od_cyl, od_axis, od_add, od_va, od_bcva, od_ipd,
-        os_sph, os_cyl, os_axis, os_add, os_va, os_bcva, os_ipd,
-        lens_type, lens_material, coatings, notes,
-        doctors(full_name),
-        orders(id, total, paid, remaining, payment_status, payment_method, lens_id, frame_id, lens_price, frame_price, consult_fee, discount),
-        payments(id, amount, payment_date, payment_method, notes)
-      `)
-      .eq('clinic_id', App.clinic.id)
-      .eq('patient_id', patientId)
-      .order('exam_date', { ascending: false });
-
-    if (error) {
-      document.getElementById('ledger-pt-body').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${error.message}</p></div>`;
-      return;
-    }
-
-    // Resolve lens/frame names
-    const lensIds  = [...new Set((rxs||[]).flatMap(r => (r.orders||[]).map(o=>o.lens_id).filter(Boolean)))];
-    const frameIds = [...new Set((rxs||[]).flatMap(r => (r.orders||[]).map(o=>o.frame_id).filter(Boolean)))];
-    const lensMap = {}, frameMap = {};
-    if (lensIds.length) {
-      const { data: rows } = await sb.from('lenses').select('id,lens_type,material,coating,sphere,cylinder').in('id', lensIds);
-      (rows||[]).forEach(l => {
-        lensMap[l.id] = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, `SPH ${l.sphere>=0?'+':''}${Number(l.sphere).toFixed(2)}`, l.coating].filter(Boolean).join(' · ');
-      });
-    }
-    if (frameIds.length) {
-      const { data: rows } = await sb.from('frames').select('id,brand,model,color').in('id', frameIds);
-      (rows||[]).forEach(f => { frameMap[f.id] = [f.brand,f.model,f.color].filter(Boolean).join(' · '); });
-    }
-
-    if (!rxs?.length) {
-      document.getElementById('ledger-pt-body').innerHTML = `
-        <div class="empty-state" style="padding:40px">
-          <i data-lucide="file-text"></i>
-          <p>${lang==='ar'?'لا توجد وصفات بعد':'No prescriptions yet'}</p>
-          <button class="btn btn-primary btn-sm" onclick="closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}')">
-            <i data-lucide="file-plus"></i>
-            <span>${lang==='ar'?'إضافة وصفة':'Add Rx'}</span>
-          </button>
-        </div>`;
-      lucide.createIcons();
-      return;
-    }
-
-    // Summary totals
-    let sumTotal = 0, sumPaid = 0, sumRemaining = 0;
-    rxs.forEach(rx => (rx.orders||[]).forEach(o => {
-      sumTotal     += Number(o.total||0);
-      sumPaid      += Number(o.paid||0);
-      sumRemaining += Number(o.remaining||0);
-    }));
-    const fmt = n => Number(n).toLocaleString(lang==='ar'?'ar-IQ':'en-US') + ' IQD';
-
-    document.getElementById('ledger-summary-bar').innerHTML = `
-      <div class="orders-summary-item s-count" style="min-width:80px;flex:unset;padding:10px 14px">
-        <div class="sum-label">${lang==='ar'?'الوصفات':'Rx Count'}</div>
-        <div class="sum-value">${rxs.length}</div>
-      </div>
-      <div class="orders-summary-item s-total" style="min-width:110px;flex:unset;padding:10px 14px">
-        <div class="sum-label">${lang==='ar'?'الإجمالي':'Total'}</div>
-        <div class="sum-value">${fmt(sumTotal)}</div>
-      </div>
-      <div class="orders-summary-item s-collected" style="min-width:110px;flex:unset;padding:10px 14px">
-        <div class="sum-label">${lang==='ar'?'المدفوع':'Paid'}</div>
-        <div class="sum-value">${fmt(sumPaid)}</div>
-      </div>
-      ${sumRemaining > 0 ? `
-      <div class="orders-summary-item s-remaining" style="min-width:110px;flex:unset;padding:10px 14px">
-        <div class="sum-label">${lang==='ar'?'المتبقي':'Remaining'}</div>
-        <div class="sum-value">${fmt(sumRemaining)}</div>
-      </div>` : ''}
-    `;
-
-    // Helpers
-    const fmtRxVal = v => (v==null||isNaN(v)) ? '—' : (Number(v)>=0?'+':'')+Number(v).toFixed(2);
-    const STAT_BADGE  = { paid:'badge-paid', partial:'badge-partial', unpaid:'badge-unpaid' };
-    const STAT_LABEL  = { paid: lang==='ar'?'مدفوع':'Paid', partial: lang==='ar'?'جزئي':'Partial', unpaid: lang==='ar'?'غير مدفوع':'Unpaid' };
-    const METH_LABEL  = { cash: lang==='ar'?'نقداً':'Cash', transfer: lang==='ar'?'تحويل':'Transfer', card:'Card' };
-    const COAT_MAP    = Object.fromEntries((COATINGS||[]).map(c=>[c.key,c.en]));
-
-    document.getElementById('ledger-pt-body').innerHTML = rxs.map(rx => {
-      const order    = (rx.orders||[])[0] || null;
-      const pmts     = (rx.payments||[]).sort((a,b)=>(b.payment_date||'')>(a.payment_date||'')?1:-1);
-      const doctor   = rx.doctors?.full_name || '';
-      const coatings = (rx.coatings||[]).map(k=>COAT_MAP[k]||k).join(', ') || '—';
-      const lensName  = order?.lens_id  ? (lensMap[order.lens_id]  || '—') : '—';
-      const frameName = order?.frame_id ? (frameMap[order.frame_id] || '—') : '—';
-      const canPay    = order && Number(order.remaining||0) > 0;
-
-      // Rx grid rows
-      const rxRow = (eye, prefix) => {
-        const sph  = fmtRxVal(rx[`${prefix}_sph`]);
-        const cyl  = fmtRxVal(rx[`${prefix}_cyl`]);
-        const axis = rx[`${prefix}_axis`] != null ? rx[`${prefix}_axis`]+'°' : '—';
-        const add  = fmtRxVal(rx[`${prefix}_add`]);
-        const va   = rx[`${prefix}_va`]   || '—';
-        const bcva = rx[`${prefix}_bcva`] || '—';
-        return `<tr>
-          <td style="font-weight:600;color:var(--accent);padding:5px 8px;white-space:nowrap">${eye}</td>
-          <td style="font-family:var(--font-mono);padding:5px 8px;text-align:center">${sph}</td>
-          <td style="font-family:var(--font-mono);padding:5px 8px;text-align:center">${cyl}</td>
-          <td style="font-family:var(--font-mono);padding:5px 8px;text-align:center">${axis}</td>
-          <td style="font-family:var(--font-mono);padding:5px 8px;text-align:center">${add}</td>
-          <td style="padding:5px 8px;text-align:center">${va}</td>
-          <td style="padding:5px 8px;text-align:center">${bcva}</td>
-        </tr>`;
-      };
-
-      const paymentRows = pmts.length ? pmts.map(pmt => `
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;padding:5px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--text-secondary)">${formatDate(pmt.payment_date)} · ${METH_LABEL[pmt.payment_method]||pmt.payment_method}</span>
-          <span style="color:var(--success);font-family:var(--font-mono);font-weight:600">+${Number(pmt.amount).toLocaleString()} IQD</span>
-        </div>`).join('') : '';
-
-      return `
-        <div style="border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin-bottom:14px">
-          <!-- Card header -->
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--bg-elevated);cursor:pointer"
-               onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
-            <div>
-              <div style="font-size:0.875rem;font-weight:600">${formatDate(rx.exam_date)}</div>
-              ${doctor?`<div style="font-size:0.75rem;color:var(--text-muted)">${doctor}</div>`:''}
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-              ${order ? `<span class="badge ${STAT_BADGE[order.payment_status]||''}">${STAT_LABEL[order.payment_status]||order.payment_status}</span>` : ''}
-              ${canPay ? `<button class="btn btn-sm" style="background:rgba(29,184,126,0.12);border:1px solid var(--success);color:var(--success);padding:3px 10px;font-size:0.75rem"
-                onclick="event.stopPropagation();openLedgerPayModal('${order.id}','${patientId}',${order.remaining},'${patientName.replace(/'/g,"\\'")}')">
-                <i data-lucide="banknote" style="width:13px;height:13px;vertical-align:middle;margin-inline-end:3px"></i>
-                ${lang==='ar'?'تسديد '+Number(order.remaining).toLocaleString()+' IQD':'Pay '+Number(order.remaining).toLocaleString()+' IQD'}
-              </button>` : ''}
-              <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')">
-                <i data-lucide="pencil"></i>
-              </button>
-              <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted)"></i>
-            </div>
-          </div>
-
-          <!-- Card body -->
-          <div style="padding:14px">
-            <!-- Rx table -->
-            <div style="overflow-x:auto;margin-bottom:12px">
-              <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
-                <thead>
-                  <tr style="background:var(--bg-elevated)">
-                    <th style="padding:5px 8px;text-align:start;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase"></th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">SPH</th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">CYL</th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">Axis</th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">Add</th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">VA</th>
-                    <th style="padding:5px 8px;text-align:center;font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">BCVA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rxRow('OD','od')}
-                  ${rxRow('OS','os')}
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Lens/Frame/Coatings -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;margin-bottom:10px">
-              <div><span style="color:var(--text-muted)">${lang==='ar'?'النوع:':'Type:'}</span> ${LENS_TYPE_LABELS[rx.lens_type]||rx.lens_type||'—'}</div>
-              <div><span style="color:var(--text-muted)">${lang==='ar'?'المادة:':'Material:'}</span> ${rx.lens_material||'—'}</div>
-              <div><span style="color:var(--text-muted)">${lang==='ar'?'العدسة:':'Lens:'}</span> ${lensName}</div>
-              <div><span style="color:var(--text-muted)">${lang==='ar'?'الإطار:':'Frame:'}</span> ${frameName}</div>
-              <div style="grid-column:1/-1"><span style="color:var(--text-muted)">${lang==='ar'?'الطلاءات:':'Coatings:'}</span> ${coatings}</div>
-              ${rx.notes?`<div style="grid-column:1/-1"><span style="color:var(--text-muted)">${lang==='ar'?'ملاحظات:':'Notes:'}</span> ${rx.notes}</div>`:''}
-              ${rx.checkup&&rx.next_visit_date?`<div style="grid-column:1/-1;color:var(--accent)">
-                <i data-lucide="calendar" style="width:12px;height:12px;vertical-align:middle;margin-inline-end:3px"></i>
-                ${lang==='ar'?'الزيارة القادمة:':'Next visit:'} <strong>${formatDate(rx.next_visit_date)}</strong>
-              </div>`:''}
-            </div>
-
-            <!-- Financial -->
-            ${order ? `
-            <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:10px;font-size:0.82rem">
-              ${[
-                ['lens_price','ar':'سعر العدسة','en':'Lens'],
-                ['frame_price','ar':'سعر الإطار','en':'Frame'],
-                ['consult_fee','ar':'كشفية','en':'Consult'],
-              ].filter(([k])=>order[k]>0).map(([k,arL,enL])=>`
-                <div style="display:flex;justify-content:space-between;padding:2px 0">
-                  <span style="color:var(--text-muted)">${lang==='ar'?arL:enL}</span>
-                  <span style="font-family:var(--font-mono)">${Number(order[k]).toLocaleString()} IQD</span>
-                </div>`).join('')}
-              ${order.discount>0?`<div style="display:flex;justify-content:space-between;padding:2px 0">
-                <span style="color:var(--text-muted)">${lang==='ar'?'خصم':'Discount'}</span>
-                <span style="font-family:var(--font-mono);color:var(--warning)">-${Number(order.discount).toLocaleString()} IQD</span>
-              </div>`:''}
-              <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border);margin-top:4px;font-weight:600">
-                <span>${lang==='ar'?'الإجمالي':'Total'}</span>
-                <span style="font-family:var(--font-mono)">${fmt(order.total||0)}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0">
-                <span style="color:var(--success)">${lang==='ar'?'المدفوع':'Paid'}</span>
-                <span style="font-family:var(--font-mono);color:var(--success)">${fmt(order.paid||0)}</span>
-              </div>
-              ${Number(order.remaining||0)>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border);margin-top:4px">
-                <span style="color:var(--danger);font-weight:600">${lang==='ar'?'المتبقي':'Remaining'}</span>
-                <span style="font-family:var(--font-mono);color:var(--danger);font-weight:700">${fmt(order.remaining)}</span>
-              </div>`:''}
-            </div>` : ''}
-
-            <!-- Payment history -->
-            ${paymentRows?`
-            <div style="margin-top:10px">
-              <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">${lang==='ar'?'سجل الدفعات':'Payment History'}</div>
-              ${paymentRows}
-            </div>`:''}
-          </div>
-        </div>`;
-    }).join('');
-
-    lucide.createIcons();
-  }
-
-  function closePatientLedger(e) {
-    if (e && e.target !== document.getElementById('patient-ledger-modal')) return;
-    document.getElementById('patient-ledger-modal').classList.add('hidden');
-    LedgerState.patientId = null;
-  }
-
-  // ── Quick-Pay from ledger ──────────────────────────────────────
-  function openLedgerPayModal(orderId, patientId, remaining, patientName) {
-    const lang = App.clinic?.language || 'ar';
-    LedgerState.orderId        = orderId;
-    LedgerState.patientIdForPay = patientId;
-    LedgerState.remaining      = Number(remaining);
-    LedgerState.patientName    = patientName;
-
-    document.getElementById('lpm-remaining').textContent = LedgerState.remaining.toLocaleString(lang==='ar'?'ar-IQ':'en-US') + ' IQD';
-    document.getElementById('lpm-amount').value          = LedgerState.remaining;
-    document.getElementById('lpm-method').value          = 'cash';
-    document.getElementById('lpm-error').classList.add('hidden');
-    document.getElementById('ledger-pay-modal').classList.remove('hidden');
-    lucide.createIcons();
-    setTimeout(() => document.getElementById('lpm-amount').select(), 80);
-  }
-
-  function closeLedgerPayModal(e) {
-    if (e && e.target !== document.getElementById('ledger-pay-modal')) return;
-    document.getElementById('ledger-pay-modal').classList.add('hidden');
-  }
-
-  async function saveLedgerPayment() {
-    const lang   = App.clinic?.language || 'ar';
-    const btn    = document.getElementById('lpm-save-btn');
-    const errEl  = document.getElementById('lpm-error');
-    const amount = parseFloat(document.getElementById('lpm-amount').value);
-    const method = document.getElementById('lpm-method').value;
-    errEl.classList.add('hidden');
-
-    if (!amount || amount <= 0) {
-      errEl.textContent = lang==='ar' ? 'أدخل مبلغاً صحيحاً' : 'Enter a valid amount';
-      errEl.classList.remove('hidden'); return;
-    }
-    if (amount > LedgerState.remaining + 0.01) {
-      errEl.textContent = (lang==='ar' ? 'يتجاوز المتبقي: ' : 'Exceeds remaining: ') + LedgerState.remaining.toLocaleString() + ' IQD';
-      errEl.classList.remove('hidden'); return;
-    }
-
-    setButtonLoading(btn, true);
-
-    // Load order to get current paid/total
-    const { data: order, error: oErr } = await sb.from('orders').select('id,paid,total,prescription_id').eq('id', LedgerState.orderId).single();
-    if (oErr || !order) {
-      errEl.textContent = lang==='ar' ? 'تعذر تحميل الطلب' : 'Could not load order';
-      errEl.classList.remove('hidden'); setButtonLoading(btn, false); return;
-    }
-
-    const newPaid      = Number(order.paid||0) + amount;
-    const newRemaining = Math.max(0, Number(order.total||0) - newPaid);
-    const newStatus    = newRemaining <= 0 ? 'paid' : 'partial';
-
-    const { error: updErr } = await sb.from('orders').update({
-      paid: newPaid, remaining: newRemaining, payment_status: newStatus, payment_method: method,
-    }).eq('id', order.id);
-
-    if (updErr) {
-      errEl.textContent = (lang==='ar'?'خطأ: ':'Error: ') + updErr.message;
-      errEl.classList.remove('hidden'); setButtonLoading(btn, false); return;
-    }
-
-    // Insert payment record
-    await sb.from('payments').insert({
-      clinic_id: App.clinic.id, patient_id: LedgerState.patientIdForPay,
-      prescription_id: order.prescription_id, amount,
-      payment_method: method, payment_date: new Date().toISOString().slice(0,10),
-      created_by: App.clinicUser.id,
-    }).catch(()=>{});
-
-    setButtonLoading(btn, false);
-    document.getElementById('ledger-pay-modal').classList.add('hidden');
-    showToast(lang==='ar' ? 'تم تسجيل الدفعة ✓' : 'Payment recorded ✓', 'success');
-
-    // Refresh ledger in place
-    if (LedgerState.patientId) openPatientLedger(LedgerState.patientId, LedgerState.patientName);
-    fetchPatients();
-  }
-
-
-
   // ── Search ──────────────────────────────────────
   function debouncePatientSearch(val) {
     clearTimeout(Patients.searchTimer);
@@ -5166,7 +4848,7 @@
 
     // Build a broad query then filter client-side with ±0.25
     let q = sb.from('lenses')
-      .select('id, lens_type, material, coating, sphere, cylinder, quantity, sell_price')
+      .select('id, name, brand, sph_od, cyl_od, sph_os, cyl_os, quantity, price, lens_type')
       .eq('clinic_id', App.clinic.id)
       .gt('quantity', 0);
 
@@ -5178,7 +4860,8 @@
       container.innerHTML = `<div class="lens-match-result">
         <div class="lens-match-status none">
           <i data-lucide="alert-circle"></i>
-          <span>${lang==='ar' ? 'لا يوجد مخزون عدسات بعد' : 'No lenses in inventory yet'}</span>
+          <span class="ar">لا يوجد تطابق في المخزون</span>
+          <span class="en" style="display:none">No matching lenses in stock</span>
         </div>
       </div>`;
       lucide.createIcons();
@@ -5186,12 +4869,16 @@
     }
 
     const TOLERANCE = 0.25;
-    const withinTol = (rx, inv) => (rx == null || isNaN(rx)) ? true : Math.abs(rx - inv) <= TOLERANCE;
+
+    function withinTol(a, b) {
+      if (a == null || b == null) return true; // null = wildcard
+      return Math.abs(a - b) <= TOLERANCE;
+    }
 
     const matches = lenses.filter(l => {
-      const odOk = withinTol(!isNaN(odSph)?odSph:null, l.sphere) && withinTol(!isNaN(odCyl)?odCyl:null, l.cylinder);
-      const osOk = withinTol(!isNaN(osSph)?osSph:null, l.sphere) && withinTol(!isNaN(osCyl)?osCyl:null, l.cylinder);
-      return odOk || osOk;
+      const odOk = withinTol(!isNaN(odSph) ? odSph : null, l.sph_od) && withinTol(!isNaN(odCyl) ? odCyl : null, l.cyl_od);
+      const osOk = withinTol(!isNaN(osSph) ? osSph : null, l.sph_os) && withinTol(!isNaN(osCyl) ? osCyl : null, l.cyl_os);
+      return odOk && osOk;
     });
 
     if (!matches.length) {
@@ -5199,29 +4886,31 @@
         <div class="lens-match-status none">
           <i data-lucide="search-x"></i>
           <span class="ar">لا يوجد تطابق للوصفة (±0.25) في المخزون</span>
-          <span class="en" style="display:none">No inventory match within ±0.25</span>
+          <span class="en" style="display:none">No inventory match within ±0.25 tolerance</span>
         </div>
       </div>`;
       lucide.createIcons();
       return;
     }
 
-    const items = matches.slice(0,8).map(l => {
-      const name     = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
-      const rxStr    = `SPH ${l.sphere>=0?'+':''}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
-      const qtyClass = l.quantity > 5 ? 'ok' : 'low';
+    const items = matches.slice(0, 8).map(l => {
+      const name    = [l.brand, l.name].filter(Boolean).join(' — ');
+      const odStr   = `OD ${fmtRx(l.sph_od)}/${fmtRx(l.cyl_od)}`;
+      const osStr   = `OS ${fmtRx(l.sph_os)}/${fmtRx(l.cyl_os)}`;
+      const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
       const selected = Rx.selectedLensId === l.id ? 'checked' : '';
-      const priceStr = l.sell_price ? Number(l.sell_price).toLocaleString()+' IQD' : '—';
+      const priceStr = l.price ? l.price.toLocaleString() + ' IQD' : '—';
+
       return `
         <div class="lens-match-item">
-          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}',${l.sell_price||0})" />
+          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.price || 0})" />
           <div class="lens-match-item-label" style="margin-inline-start:8px">
             <div class="lens-match-item-name">${name}</div>
-            <div class="lens-match-item-vals">${rxStr}</div>
+            <div class="lens-match-item-vals">${odStr} · ${osStr}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
             <span class="lens-match-item-qty">${priceStr}</span>
-            <span class="lens-match-item-qty ${qtyClass}">${lang==='ar'?'ك: ':'Qty: '}${l.quantity}</span>
+            <span class="lens-match-item-qty ${qtyClass}">${lang === 'ar' ? 'ك: ' : 'Qty: '}${l.quantity}</span>
           </div>
         </div>`;
     }).join('');
