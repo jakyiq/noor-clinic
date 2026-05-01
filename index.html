@@ -4433,11 +4433,11 @@
           <td class="text-sm" style="color:${nextVisitRx ? 'var(--accent)' : 'var(--text-muted)'}">${nextVisit}</td>
           <td>${balanceHtml}</td>
           <td>
-            <button class="btn btn-ghost btn-sm" title="Edit" onclick="event.stopPropagation();openPatientModal('${p.id}')">
-              <i data-lucide="pencil"></i>
+            <button class="btn btn-ghost btn-sm" title="Edit" onclick="event.stopPropagation();openPatientModal('${p.id}')" style="padding:6px 8px">
+              <i data-lucide="pencil" style="width:18px;height:18px"></i>
             </button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--accent)" title="New Rx" onclick="event.stopPropagation();openRxModal('${p.id}','${p.full_name.replace(/'/g,"\\'")}')">
-              <i data-lucide="file-plus"></i>
+            <button class="btn btn-ghost btn-sm" style="color:var(--accent);padding:6px 8px" title="New Rx" onclick="event.stopPropagation();openRxModal('${p.id}','${p.full_name.replace(/'/g,"\\'")}')">
+              <i data-lucide="file-plus" style="width:18px;height:18px"></i>
             </button>
           </td>
         </tr>`;
@@ -4623,8 +4623,8 @@
               <button class="btn btn-ghost btn-sm" title="${lang==='ar'?'طباعة وصفة':'Print Rx'}" onclick="event.stopPropagation();printRx('${rx.id}','${patientId}')" style="padding:6px 10px">
                 <i data-lucide="printer" style="width:20px;height:20px"></i>
               </button>
-              <button class="btn btn-ghost btn-sm" title="Edit Rx" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')">
-                <i data-lucide="pencil"></i>
+              <button class="btn btn-ghost btn-sm" title="Edit Rx" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')" style="padding:6px 8px">
+                <i data-lucide="pencil" style="width:18px;height:18px"></i>
               </button>
             </div>
           </div>
@@ -5388,6 +5388,7 @@
 
         return `
           <div class="lens-match-item" id="lens-card-${eye}-${l.id}"
+            data-qty="${l.quantity}"
             style="cursor:pointer;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:4px;border:1px solid var(--border);${selStyle}display:flex;align-items:center;gap:10px;"
             onclick="selectLensForEye('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}', '${eye}')">
             <div style="width:16px;height:16px;border-radius:50%;border:2px solid ${isSelected ? 'var(--success)' : 'var(--border)'};background:${isSelected ? 'var(--success)' : 'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
@@ -5430,6 +5431,24 @@
   }
 
   function selectLensForEye(lensId, price, lensType, material, eye) {
+    const lang = App.clinic?.language || 'ar';
+    // Guard: check if this lens has qty=1 and is already selected by the OTHER eye
+    const otherEyeId = eye === 'od' ? Rx.selectedOsLensId : Rx.selectedOdLensId;
+    if (otherEyeId === lensId) {
+      // Check qty via data-qty on either eye's card
+      const anyCard = document.getElementById(`lens-card-od-${lensId}`) || document.getElementById(`lens-card-os-${lensId}`);
+      const qtyVal = anyCard ? parseInt(anyCard.dataset.qty || '99') : 99;
+      if (qtyVal <= 1) {
+        showToast(
+          lang === 'ar'
+            ? 'لا يمكن اختيار نفس العدسة للعينين — المخزون عدسة واحدة فقط'
+            : 'Cannot pick the same lens for both eyes — only 1 in stock',
+          'warning'
+        );
+        return;
+      }
+    }
+
     if (eye === 'od') {
       Rx.selectedOdLensId = lensId;
     } else {
@@ -5927,11 +5946,11 @@
         <td class="font-mono">${Number(l.cylinder || 0).toFixed(2)}</td>
         <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="duplicateLensFrom('${l.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}">
-            <i data-lucide="copy"></i>
+          <button class="btn btn-ghost btn-sm" onclick="duplicateLensFrom('${l.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}" style="padding:6px 8px">
+            <i data-lucide="copy" style="width:18px;height:18px"></i>
           </button>
-          <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')">
-            <i data-lucide="pencil"></i>
+          <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')" style="padding:6px 8px">
+            <i data-lucide="pencil" style="width:18px;height:18px"></i>
           </button>
         </td>
       </tr>`;
@@ -6149,11 +6168,11 @@
         <td>${f.material ? `<span class="badge badge-muted">${materialLabel}</span>` : '—'}</td>
         <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="duplicateFrameFrom('${f.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}">
-            <i data-lucide="copy"></i>
+          <button class="btn btn-ghost btn-sm" onclick="duplicateFrameFrom('${f.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}" style="padding:6px 8px">
+            <i data-lucide="copy" style="width:18px;height:18px"></i>
           </button>
-          <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')">
-            <i data-lucide="pencil"></i>
+          <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')" style="padding:6px 8px">
+            <i data-lucide="pencil" style="width:18px;height:18px"></i>
           </button>
         </td>
       </tr>`;
@@ -6369,8 +6388,8 @@
           <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
           <td style="color:var(--text-muted)">${l.restock_level ?? 2}</td>
           <td>
-            <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')">
-              <i data-lucide="pencil"></i>
+            <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')" style="padding:6px 8px">
+              <i data-lucide="pencil" style="width:18px;height:18px"></i>
             </button>
           </td>
         </tr>`;
@@ -6393,8 +6412,8 @@
           <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
           <td style="color:var(--text-muted)">${f.restock_level ?? 1}</td>
           <td>
-            <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')">
-              <i data-lucide="pencil"></i>
+            <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')" style="padding:6px 8px">
+              <i data-lucide="pencil" style="width:18px;height:18px"></i>
             </button>
           </td>
         </tr>`;
@@ -6477,17 +6496,30 @@
 
       const fmtDate = d => d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-GB') : '—';
 
+      const phone = r.patients?.phone || '';
+      const phoneCleaned = phone.replace(/\D/g, '');
+      const whatsappNum = phoneCleaned.startsWith('0') ? '964' + phoneCleaned.slice(1) : phoneCleaned;
+
       return `<tr>
         <td style="font-weight:500">${r.patients?.full_name || '—'}</td>
-        <td style="color:var(--text-muted)">${r.patients?.phone || '—'}</td>
+        <td style="color:var(--text-muted)">${phone || '—'}</td>
         <td style="color:var(--text-muted)">${fmtDate(r.exam_date)}</td>
         <td style="font-weight:600;color:${isPast ? 'var(--danger)' : isToday ? 'var(--warning)' : 'var(--text-primary)'}">${fmtDate(r.next_visit_date)}</td>
         <td>${statusBadge}</td>
         <td style="color:var(--text-muted)">${r.doctors?.full_name || '—'}</td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="openRxModal('${r.patient_id}', '${r.id}')" title="${lang === 'ar' ? 'فتح الوصفة' : 'Open Rx'}">
-            <i data-lucide="file-text"></i>
-          </button>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">
+            ${phone ? `
+            <a href="tel:${phone}" class="btn btn-ghost btn-sm" title="${lang === 'ar' ? 'اتصال' : 'Call'}" style="color:var(--success);padding:5px 7px" onclick="event.stopPropagation()">
+              <i data-lucide="phone" style="width:18px;height:18px"></i>
+            </a>
+            <a href="https://wa.me/${whatsappNum}" target="_blank" class="btn btn-ghost btn-sm" title="WhatsApp" style="color:#25D366;padding:5px 7px" onclick="event.stopPropagation()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </a>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="openRxModal('${r.patient_id}', '${r.id}')" title="${lang === 'ar' ? 'فتح الوصفة' : 'Open Rx'}" style="padding:5px 7px">
+              <i data-lucide="file-text" style="width:18px;height:18px"></i>
+            </button>
+          </div>
         </td>
       </tr>`;
     }).join('');
