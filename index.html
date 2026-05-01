@@ -7121,7 +7121,7 @@
 
     body {
       font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
-      font-size: 9pt;
+      font-size: 11pt;
       color: #111;
       background: #fff;
       direction: ${dir};
@@ -7144,7 +7144,7 @@
     .slip {
       width: 100%;
       max-width: 124mm;
-      min-height: 190mm; /* A5 210mm - 10mm top - 10mm bottom margins */
+      min-height: 190mm;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
@@ -7158,31 +7158,31 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding-bottom: 6px;
+      gap: 10px;
+      padding-bottom: 9px;
       border-bottom: 2.5px solid var(--rx-accent);
-      margin-bottom: 6px;
+      margin-bottom: 9px;
     }
     .header-logo {
-      width: 48px; height: 48px;
+      width: 58px; height: 58px;
       object-fit: contain; flex-shrink: 0;
     }
     .header-logo-placeholder {
-      width: 48px; height: 48px; border-radius: 6px;
+      width: 58px; height: 58px; border-radius: 7px;
       background: var(--rx-accent); display: flex; align-items: center;
       justify-content: center; flex-shrink: 0;
     }
-    .header-logo-placeholder svg { width: 26px; height: 26px; stroke: #fff; fill: none; }
+    .header-logo-placeholder svg { width: 32px; height: 32px; stroke: #fff; fill: none; }
     .header-clinic { flex: 1; min-width: 0; }
-    .clinic-name-ar { font-size: 13pt; font-weight: 700; color: var(--rx-accent); line-height: 1.2; }
-    .clinic-name-en { font-size: 8.5pt; font-weight: 400; color: #444; margin-top: 1px; }
-    .clinic-meta    { font-size: 7.5pt; color: #666; margin-top: 2px; }
+    .clinic-name-ar { font-size: 15pt; font-weight: 700; color: var(--rx-accent); line-height: 1.2; }
+    .clinic-name-en { font-size: 10pt; font-weight: 400; color: #444; margin-top: 2px; }
+    .clinic-meta    { font-size: 9pt; color: #666; margin-top: 3px; }
 
     /* ── Title bar ── */
     .rx-title {
       background: var(--rx-accent); color: #fff;
-      text-align: center; font-size: 10pt; font-weight: 600;
-      padding: 4px 0; border-radius: 3px; margin-bottom: 7px;
+      text-align: center; font-size: 12pt; font-weight: 600;
+      padding: 6px 0; border-radius: 4px; margin-bottom: 10px;
       letter-spacing: 0.03em;
     }
 
@@ -7190,45 +7190,45 @@
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 2px 12px;
-      font-size: 8pt;
-      margin-bottom: 7px;
+      gap: 4px 14px;
+      font-size: 10pt;
+      margin-bottom: 10px;
     }
-    .info-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .info-row { display: flex; gap: 5px; flex-wrap: wrap; }
     .info-label { color: #666; white-space: nowrap; }
-    .info-value { font-weight: 500; color: #111; word-break: break-word; }
+    .info-value { font-weight: 600; color: #111; word-break: break-word; }
 
     /* ── Section title ── */
     .section-title {
-      font-size: 7.5pt; font-weight: 700; color: var(--rx-accent);
-      text-transform: uppercase; letter-spacing: 0.05em;
-      border-bottom: 1px solid #c8d6f0; padding-bottom: 2px;
-      margin: 7px 0 4px;
+      font-size: 9pt; font-weight: 700; color: var(--rx-accent);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1.5px solid #c8d6f0; padding-bottom: 3px;
+      margin: 10px 0 6px;
     }
 
-    /* ── Rx table — compact for A5, no overflow ── */
+    /* ── Rx table — fits A5, no overflow ── */
     table {
       width: 100%; border-collapse: collapse;
-      font-size: 6.5pt; margin-bottom: 6px;
+      font-size: 8pt; margin-bottom: 8px;
       table-layout: fixed;
     }
     th {
       background: #eef2fb; color: var(--rx-accent);
-      font-weight: 700; padding: 4px 2px;
+      font-weight: 700; padding: 6px 3px;
       text-align: center; border: 1px solid #c8d6f0;
-      font-size: 6.5pt; white-space: nowrap;
+      font-size: 8pt; white-space: nowrap;
       overflow: hidden;
     }
     td {
-      padding: 4px 2px; border: 1px solid #dde4f0;
+      padding: 6px 3px; border: 1px solid #dde4f0;
       text-align: center; font-family: 'IBM Plex Mono', monospace;
-      font-size: 7pt; overflow: hidden;
+      font-size: 8.5pt; overflow: hidden;
     }
     td.eye-label {
       font-family: 'IBM Plex Sans Arabic', sans-serif;
       font-weight: 700; color: var(--rx-accent); background: #f4f7fd;
-      text-align: ${isAr ? 'right' : 'left'}; padding: 4px 5px;
-      font-size: 7pt; white-space: nowrap;
+      text-align: ${isAr ? 'right' : 'left'}; padding: 6px 7px;
+      font-size: 8.5pt; white-space: nowrap;
     }
     /* Strict column widths so table never overflows A5 width */
     table colgroup col:first-child { width: 20mm; }
@@ -7237,19 +7237,19 @@
     /* ── Detail rows ── */
     .detail-grid {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 2px 12px; font-size: 8pt; margin-bottom: 6px;
+      gap: 5px 14px; font-size: 9.5pt; margin-bottom: 8px;
     }
-    .detail-row   { display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
-    .detail-label { color: #666; white-space: nowrap; font-size: 7.5pt; }
-    .detail-value { font-weight: 500; font-size: 8pt; word-break: break-word; }
-    .detail-full  { grid-column: 1 / -1; display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
+    .detail-row   { display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
+    .detail-label { color: #666; white-space: nowrap; font-size: 9pt; }
+    .detail-value { font-weight: 600; font-size: 9.5pt; word-break: break-word; }
+    .detail-full  { grid-column: 1 / -1; display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
 
     /* ── Financials ── */
-    .fin-table { width: 100%; font-size: 8pt; margin-bottom: 6px; }
-    .fin-row   { display: flex; justify-content: space-between; padding: 2px 0; }
+    .fin-table { width: 100%; font-size: 9.5pt; margin-bottom: 8px; }
+    .fin-row   { display: flex; justify-content: space-between; padding: 4px 0; }
     .fin-row.total-row {
-      font-weight: 700; font-size: 9pt; color: var(--rx-accent);
-      border-top: 1px solid var(--rx-accent); margin-top: 3px; padding-top: 3px;
+      font-weight: 700; font-size: 11pt; color: var(--rx-accent);
+      border-top: 1.5px solid var(--rx-accent); margin-top: 4px; padding-top: 4px;
     }
     .fin-row.remaining-row { color: #c02030; font-weight: 600; }
     .fin-row.paid-row      { color: #0e8a58; }
@@ -7258,38 +7258,38 @@
     /* ── Next visit / notes ── */
     .next-visit {
       background: #eef5ff; border: 1px solid #c8d6f0;
-      border-radius: 3px; padding: 4px 7px;
-      font-size: 8pt; margin-bottom: 5px;
-      display: flex; align-items: center; gap: 5px;
+      border-radius: 4px; padding: 6px 9px;
+      font-size: 9.5pt; margin-bottom: 7px;
+      display: flex; align-items: center; gap: 6px;
     }
     .next-visit-label { color: var(--rx-accent); font-weight: 600; }
     .next-visit-date  { font-weight: 700; color: var(--rx-accent); }
 
     .notes-box {
-      border: 1px solid #dde4f0; border-radius: 3px;
-      padding: 4px 7px; font-size: 7.5pt; color: #333;
-      margin-bottom: 5px; min-height: 18px;
+      border: 1px solid #dde4f0; border-radius: 4px;
+      padding: 6px 9px; font-size: 9pt; color: #333;
+      margin-bottom: 7px; min-height: 22px;
     }
 
     /* ── Signature line ── */
     .sig-line {
       display: flex;
       justify-content: ${isAr ? 'flex-start' : 'flex-end'};
-      margin-top: 8px; margin-bottom: 6px;
+      margin-top: 10px; margin-bottom: 8px;
     }
     .sig-inner {
-      text-align: center; min-width: 100px;
+      text-align: center; min-width: 110px;
     }
     .sig-inner-top {
       border-top: 1px solid #999;
-      padding-top: 3px; font-size: 7pt; color: #555;
+      padding-top: 4px; font-size: 8.5pt; color: #555;
     }
 
     /* ── Footer with QR — sticks to bottom of page ── */
     .footer-wrap {
       border-top: 1.5px solid #c8d6f0;
       margin-top: auto;
-      padding-top: 6px;
+      padding-top: 7px;
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
@@ -7297,21 +7297,21 @@
     }
     .footer-text-col {
       flex: 1;
-      font-size: 7pt; color: #888;
+      font-size: 8.5pt; color: #888;
     }
-    .footer-text { margin-bottom: 2px; font-size: 7.5pt; color: #555; }
+    .footer-text { margin-bottom: 3px; font-size: 9pt; color: #555; }
     .footer-qr { flex-shrink: 0; }
     .footer-qr img {
-      width: 72px; height: 72px;
+      width: 80px; height: 80px;
       display: block;
       object-fit: contain;
     }
 
     /* ── Print button (screen only) ── */
     .print-btn {
-      display: block; margin: 14px auto 0;
-      padding: 7px 22px; background: var(--rx-accent); color: #fff;
-      border: none; border-radius: 5px; font-size: 9.5pt;
+      display: block; margin: 16px auto 0;
+      padding: 9px 28px; background: var(--rx-accent); color: #fff;
+      border: none; border-radius: 5px; font-size: 11pt;
       cursor: pointer; font-family: inherit;
     }
     .print-btn:hover { filter: brightness(0.88); }
@@ -7458,7 +7458,7 @@
     </div>
     ${order.paid ? `<div class="fin-row paid-row"><span>${isAr ? 'المدفوع' : 'Paid'}</span><span class="fin-mono">${fmtIqd(order.paid)}</span></div>` : ''}
     ${order.remaining > 0 ? `<div class="fin-row remaining-row"><span>${isAr ? 'المتبقي' : 'Remaining'}</span><span class="fin-mono">${fmtIqd(order.remaining)}</span></div>` : ''}
-    ${order.payment_method ? `<div class="fin-row" style="color:#666;font-size:7pt"><span>${isAr ? 'طريقة الدفع' : 'Payment Method'}</span><span>${methodLabel[order.payment_method] || order.payment_method}</span></div>` : ''}
+    ${order.payment_method ? `<div class="fin-row" style="color:#666;font-size:9pt"><span>${isAr ? 'طريقة الدفع' : 'Payment Method'}</span><span>${methodLabel[order.payment_method] || order.payment_method}</span></div>` : ''}
   </div>` : ''}
 
   <!-- ── NEXT VISIT ── -->
@@ -7496,7 +7496,7 @@
         ${clinicNameAr}
         ${clinicPhone ? ` &nbsp;|&nbsp; ${clinicPhone}` : ''}
       </div>
-      <div style="margin-top:2px;font-size:6.5pt;color:#aaa">
+      <div style="margin-top:3px;font-size:8pt;color:#aaa">
         ${isAr ? 'تاريخ الطباعة:' : 'Printed:'} ${new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}
         &nbsp;|&nbsp; Rx# ${rxId.slice(-8).toUpperCase()}
       </div>
