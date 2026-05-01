@@ -3292,6 +3292,27 @@
                       <input type="text" id="rx-frame-name" class="form-control" />
                     </div>
                     <div class="form-group">
+                      <label class="form-label"><span class="ar">نوع الإطار</span><span class="en" style="display:none">Frame Type</span></label>
+                      <select id="rx-frame-type" class="form-control">
+                        <option value="">—</option>
+                        <option value="full_rim">Full Rim</option>
+                        <option value="half_rim">Half Rim</option>
+                        <option value="rimless">Rimless</option>
+                        <option value="sunglass">Sunglass</option>
+                        <option value="kids">Kids</option>
+                        <option value="sport">Sport</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label"><span class="ar">مادة الإطار</span><span class="en" style="display:none">Frame Material</span></label>
+                      <select id="rx-frame-material" class="form-control">
+                        <option value="">—</option>
+                        <option value="metal">Metal</option>
+                        <option value="plastic">Plastic</option>
+                        <option value="titanium">Titanium</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
                       <label class="form-label"><span class="ar">سعر الإطار (IQD)</span><span class="en" style="display:none">Frame Price (IQD)</span></label>
                       <input type="number" id="rx-frame-price" class="form-control" placeholder="0" min="0" oninput="recalcTotal()" />
                     </div>
@@ -3425,6 +3446,60 @@
   // ─────────────────────────────────────
   const SUPABASE_URL      = 'https://ajdfzlbwaslxzxhxdwrm.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqZGZ6bGJ3YXNseHp4aHhkd3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0OTU2NTksImV4cCI6MjA5MzA3MTY1OX0.1qsYu07FQv632WK69TojY3vNotvBPxmJGsI_IdmBytI';
+
+  /*
+  ════════════════════════════════════════════════════════════════
+  REQUIRED SUPABASE SCHEMA MIGRATIONS
+  Run these in your Supabase SQL Editor (project → SQL Editor → New Query)
+  ════════════════════════════════════════════════════════════════
+
+  -- 1. clinics table: add missing columns
+  ALTER TABLE clinics
+    ADD COLUMN IF NOT EXISTS rx_color          TEXT    DEFAULT '#1a3a6e',
+    ADD COLUMN IF NOT EXISTS qr_image          TEXT,
+    ADD COLUMN IF NOT EXISTS print_show_payment BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS name_ar           TEXT,
+    ADD COLUMN IF NOT EXISTS footer_text       TEXT,
+    ADD COLUMN IF NOT EXISTS logo_url          TEXT,
+    ADD COLUMN IF NOT EXISTS location_url      TEXT,
+    ADD COLUMN IF NOT EXISTS next_visit_default INTEGER DEFAULT 30;
+
+  -- 2. prescriptions table: add frame + material columns
+  ALTER TABLE prescriptions
+    ADD COLUMN IF NOT EXISTS frame_name     TEXT,
+    ADD COLUMN IF NOT EXISTS frame_type     TEXT,
+    ADD COLUMN IF NOT EXISTS frame_material TEXT,
+    ADD COLUMN IF NOT EXISTS lens_material  TEXT,
+    ADD COLUMN IF NOT EXISTS coatings       TEXT[],
+    ADD COLUMN IF NOT EXISTS od_bcva        TEXT,
+    ADD COLUMN IF NOT EXISTS os_bcva        TEXT,
+    ADD COLUMN IF NOT EXISTS next_visit_date DATE,
+    ADD COLUMN IF NOT EXISTS checkup        BOOLEAN DEFAULT false;
+
+  -- 3. frames table: ensure material column exists as text (stored value: metal | plastic | titanium)
+  ALTER TABLE frames
+    ADD COLUMN IF NOT EXISTS material      TEXT,
+    ADD COLUMN IF NOT EXISTS cost_price    NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS restock_level INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS notes         TEXT;
+
+  -- 4. lenses table: ensure all columns exist
+  ALTER TABLE lenses
+    ADD COLUMN IF NOT EXISTS coating       TEXT,
+    ADD COLUMN IF NOT EXISTS cost_price    NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS restock_level INTEGER DEFAULT 2,
+    ADD COLUMN IF NOT EXISTS notes         TEXT;
+
+  -- 5. orders table: ensure columns exist
+  ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS consult_fee   NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS discount      NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS remaining     NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash';
+
+  -- After running, go to Supabase → API → Reload schema cache (or restart your project).
+  ════════════════════════════════════════════════════════════════
+  */
 
   // ─────────────────────────────────────
   // SUPABASE CLIENT
@@ -4873,6 +4948,8 @@
     });
     document.getElementById('rx-lens-type').value      = '';
     document.getElementById('rx-lens-material').value  = '';
+    document.getElementById('rx-frame-type').value     = '';
+    document.getElementById('rx-frame-material').value = '';
     document.getElementById('rx-payment-method').value = 'cash';
     document.getElementById('rx-checkup').checked      = false;
     document.getElementById('rx-next-visit-group').style.display = 'none';
@@ -5020,6 +5097,8 @@
 
     document.getElementById('rx-lens-type').value     = rx.lens_type     || '';
     document.getElementById('rx-lens-material').value = rx.lens_material || '';
+    document.getElementById('rx-frame-type').value    = rx.frame_type    || '';
+    document.getElementById('rx-frame-material').value = rx.frame_material || '';
     setCoatings(rx.coatings || []);
 
     if (!copyMode) Rx.editingId = rxId;
@@ -5037,10 +5116,16 @@
       if (order.lens_id)  Rx.selectedLensId  = order.lens_id;
     }
 
-    // Populate frame name from inventory
-    if (Rx.selectedFrameId) {
-      const { data: fr } = await sb.from('frames').select('model,brand').eq('id', Rx.selectedFrameId).single();
-      if (fr) document.getElementById('rx-frame-name').value = [fr.brand, fr.model].filter(Boolean).join(' — ');
+    // Populate frame name — first from rx.frame_name, then from inventory
+    if (rx.frame_name) {
+      document.getElementById('rx-frame-name').value = rx.frame_name;
+    } else if (Rx.selectedFrameId) {
+      const { data: fr } = await sb.from('frames').select('model,brand,frame_type,material').eq('id', Rx.selectedFrameId).single();
+      if (fr) {
+        document.getElementById('rx-frame-name').value = [fr.brand, fr.model].filter(Boolean).join(' — ');
+        if (!rx.frame_type)    document.getElementById('rx-frame-type').value    = fr.frame_type || '';
+        if (!rx.frame_material) document.getElementById('rx-frame-material').value = fr.material  || '';
+      }
     }
 
     recalcTotal();
@@ -5226,7 +5311,7 @@
 
       return `
         <div class="lens-match-item">
-          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.sell_price || 0})" />
+          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}')" />
           <div class="lens-match-item-label" style="margin-inline-start:8px">
             <div class="lens-match-item-name">${name}</div>
             <div class="lens-match-item-vals">${rxStr}</div>
@@ -5250,9 +5335,13 @@
     lucide.createIcons();
   }
 
-  function selectLens(lensId, price) {
+  function selectLens(lensId, price, lensType, material) {
     Rx.selectedLensId = lensId;
     document.getElementById('rx-lens-price').value = price || '';
+    if (lensType && !document.getElementById('rx-lens-type').value)
+      document.getElementById('rx-lens-type').value = lensType;
+    if (material && !document.getElementById('rx-lens-material').value)
+      document.getElementById('rx-lens-material').value = material;
     recalcTotal();
   }
 
@@ -5268,7 +5357,7 @@
     if (!query || query.length < 2) { container.innerHTML = ''; return; }
 
     const { data, error } = await sb.from('frames')
-      .select('id, brand, model, frame_type, color, size, quantity, sell_price')
+      .select('id, brand, model, frame_type, material, color, size, quantity, sell_price')
       .eq('clinic_id', App.clinic.id)
       .or(`brand.ilike.%${query}%,model.ilike.%${query}%,color.ilike.%${query}%`)
       .order('quantity', { ascending: false })
@@ -5282,14 +5371,14 @@
 
     container.innerHTML = data.map(f => {
       const name     = [f.brand, f.model].filter(Boolean).join(' — ');
-      const meta     = [f.color, f.size].filter(Boolean).join(' · ');
+      const meta     = [f.color, f.size, f.material].filter(Boolean).join(' · ');
       const qtyClass = f.quantity > 3 ? 'ok' : f.quantity > 0 ? 'low' : 'out';
       const qtyTxt   = lang === 'ar' ? `ك: ${f.quantity}` : `Qty: ${f.quantity}`;
       const selected = Rx.selectedFrameId === f.id ? 'selected' : '';
       const priceStr = f.sell_price ? f.sell_price.toLocaleString() + ' IQD' : '';
 
       return `
-        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0})">
+        <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0}, '${f.frame_type || ''}', '${f.material || ''}', this)">
           <div class="frame-match-info">
             <div class="frame-match-name">${name}</div>
             <div class="frame-match-meta">${meta}${priceStr ? ' · ' + priceStr : ''}</div>
@@ -5299,13 +5388,16 @@
     }).join('');
   }
 
-  function selectFrame(frameId, frameName, price) {
+  function selectFrame(frameId, frameName, price, frameType, frameMaterial, el) {
     Rx.selectedFrameId = frameId;
     document.getElementById('rx-frame-name').value  = frameName;
     document.getElementById('rx-frame-price').value = price || '';
+    if (frameType)     document.getElementById('rx-frame-type').value     = frameType;
+    if (frameMaterial) document.getElementById('rx-frame-material').value = frameMaterial;
     // Highlight selected card
     document.querySelectorAll('.frame-match-card').forEach(c => c.classList.remove('selected'));
-    event.currentTarget.classList.add('selected');
+    const card = el ? el.closest('.frame-match-card') || el : null;
+    if (card) card.classList.add('selected');
     recalcTotal();
   }
 
@@ -5379,12 +5471,16 @@
       lens_type:     document.getElementById('rx-lens-type').value     || null,
       lens_material: document.getElementById('rx-lens-material').value || null,
       coatings:      getSelectedCoatings(),
+      frame_name:    document.getElementById('rx-frame-name').value.trim() || null,
+      frame_type:    document.getElementById('rx-frame-type').value    || null,
+      frame_material: document.getElementById('rx-frame-material').value || null,
       created_by:    App.clinicUser.id,
     };
 
     let rxId = Rx.editingId;
     let rxError;
 
+    // Try saving with full payload first
     if (rxId) {
       const res = await sb.from('prescriptions').update(rxPayload).eq('id', rxId);
       rxError = res.error;
@@ -5394,11 +5490,39 @@
       if (!rxError) rxId = res.data.id;
     }
 
+    // If error, try again with only core columns (handles missing schema columns)
     if (rxError) {
-      errEl.textContent = lang === 'ar' ? 'حدث خطأ في حفظ الوصفة' : 'Error saving prescription';
-      errEl.classList.remove('hidden');
-      setButtonLoading(btn, false);
-      return;
+      const corePayload = {
+        clinic_id:      rxPayload.clinic_id,
+        patient_id:     rxPayload.patient_id,
+        doctor_id:      rxPayload.doctor_id,
+        exam_date:      rxPayload.exam_date,
+        notes:          rxPayload.notes,
+        checkup:        rxPayload.checkup,
+        next_visit_date: rxPayload.next_visit_date,
+        od_sph: rxPayload.od_sph,  od_cyl: rxPayload.od_cyl,  od_axis: rxPayload.od_axis,
+        od_add: rxPayload.od_add,  od_ipd: rxPayload.od_ipd,  od_va:   rxPayload.od_va,
+        os_sph: rxPayload.os_sph,  os_cyl: rxPayload.os_cyl,  os_axis: rxPayload.os_axis,
+        os_add: rxPayload.os_add,  os_ipd: rxPayload.os_ipd,  os_va:   rxPayload.os_va,
+        lens_type:     rxPayload.lens_type,
+        created_by:    rxPayload.created_by,
+      };
+      let res2;
+      if (rxId) {
+        res2 = await sb.from('prescriptions').update(corePayload).eq('id', rxId);
+      } else {
+        res2 = await sb.from('prescriptions').insert(corePayload).select('id').single();
+        if (!res2.error) rxId = res2.data.id;
+      }
+      if (res2.error) {
+        errEl.textContent = (lang === 'ar' ? 'خطأ: ' : 'Error: ') + res2.error.message;
+        errEl.classList.remove('hidden');
+        setButtonLoading(btn, false);
+        return;
+      }
+      // Saved with core — remind user to run migrations
+      showToast(lang === 'ar' ? 'تم الحفظ (بعض الحقول تحتاج migration)' : 'Saved (run DB migrations for full fields)', 'warning');
+      rxError = null;
     }
 
     // ── Save order ──
@@ -5441,20 +5565,43 @@
     if (existingOrder) {
       const res = await sb.from('orders').update(orderPayload).eq('id', existingOrder.id);
       orderError = res.error;
+      // Fallback without optional columns
+      if (orderError) {
+        const coreOrder = { lens_id: orderPayload.lens_id, frame_id: orderPayload.frame_id,
+          lens_price: orderPayload.lens_price, frame_price: orderPayload.frame_price,
+          total: orderPayload.total, paid: orderPayload.paid, payment_status: orderPayload.payment_status };
+        const r2 = await sb.from('orders').update(coreOrder).eq('id', existingOrder.id);
+        orderError = r2.error;
+      }
     } else {
       const res = await sb.from('orders').insert(orderPayload);
       orderError = res.error;
+      // Fallback without optional columns
+      if (orderError) {
+        const coreOrder = { clinic_id: orderPayload.clinic_id, patient_id: orderPayload.patient_id,
+          prescription_id: rxId, lens_id: orderPayload.lens_id, frame_id: orderPayload.frame_id,
+          lens_price: orderPayload.lens_price, frame_price: orderPayload.frame_price,
+          total: orderPayload.total, paid: orderPayload.paid, payment_status: orderPayload.payment_status,
+          order_date: orderPayload.order_date, created_by: orderPayload.created_by };
+        const r2 = await sb.from('orders').insert(coreOrder);
+        orderError = r2.error;
+      }
     }
 
     // Deduct inventory quantities if new prescription
     if (!Rx.editingId) {
       if (Rx.selectedLensId) {
-        await sb.rpc('decrement_lens_qty', { p_lens_id: Rx.selectedLensId, p_amount: 1 })
-          .catch(() => {});
+        // Fetch current qty then decrement
+        const { data: lensRow } = await sb.from('lenses').select('quantity').eq('id', Rx.selectedLensId).single();
+        if (lensRow && lensRow.quantity > 0) {
+          await sb.from('lenses').update({ quantity: lensRow.quantity - 1 }).eq('id', Rx.selectedLensId);
+        }
       }
       if (Rx.selectedFrameId) {
-        await sb.rpc('decrement_frame_qty', { p_frame_id: Rx.selectedFrameId, p_amount: 1 })
-          .catch(() => {});
+        const { data: frameRow } = await sb.from('frames').select('quantity').eq('id', Rx.selectedFrameId).single();
+        if (frameRow && frameRow.quantity > 0) {
+          await sb.from('frames').update({ quantity: frameRow.quantity - 1 }).eq('id', Rx.selectedFrameId);
+        }
       }
     }
 
@@ -5545,6 +5692,9 @@
   const FRAME_TYPE_LABELS = {
     full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless',
     sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport',
+  };
+  const FRAME_MATERIAL_LABELS = {
+    metal: 'Metal', plastic: 'Plastic', titanium: 'Titanium',
   };
   const LENS_TYPE_LABELS = {
     single: 'Single Vision', bifocal: 'Bifocal',
@@ -5817,14 +5967,15 @@
 
     tbody.innerHTML = FrameInv.list.map(f => {
       const qtyClass = f.quantity <= (f.restock_level ?? 1) ? (f.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
-      const typeLabel = FRAME_TYPE_LABELS[f.frame_type] || '—';
+      const typeLabel     = FRAME_TYPE_LABELS[f.frame_type]     || '—';
+      const materialLabel = FRAME_MATERIAL_LABELS[f.material]    || f.material || '—';
       return `<tr>
         <td><span style="font-weight:500">${f.brand || '—'}</span></td>
         <td>${f.model || '—'}</td>
         <td>${f.frame_type ? `<span class="badge badge-info">${typeLabel}</span>` : '—'}</td>
         <td>${f.color || '—'}</td>
         <td class="font-mono text-secondary">${f.size || '—'}</td>
-        <td>${f.material || '—'}</td>
+        <td>${f.material ? `<span class="badge badge-muted">${materialLabel}</span>` : '—'}</td>
         <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
         <td>
           <button class="btn btn-ghost btn-sm" onclick="duplicateFrameFrom('${f.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}">
@@ -5871,6 +6022,7 @@
         document.getElementById('frame-color').value       = f.color || '';
         document.getElementById('frame-size').value        = f.size || '';
         document.getElementById('frame-material').value    = f.material || '';
+
         document.getElementById('frame-qty').value         = f.quantity ?? 0;
         document.getElementById('frame-restock').value     = f.restock_level ?? 1;
         document.getElementById('frame-sell-price').value  = f.sell_price || '';
@@ -7672,7 +7824,12 @@
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">المادة</span><span class="en" style="display:none">Material</span></label>
-                <input type="text" id="frame-material" class="form-control" placeholder="e.g. Metal, Acetate" />
+                <select id="frame-material" class="form-control">
+                  <option value="">—</option>
+                  <option value="metal">Metal</option>
+                  <option value="plastic">Plastic</option>
+                  <option value="titanium">Titanium</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">الكمية *</span><span class="en" style="display:none">Quantity *</span></label>
