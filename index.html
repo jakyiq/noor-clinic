@@ -250,7 +250,7 @@
       position: fixed;
       inset: 0;
       background: var(--bg-base);
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -1866,7 +1866,6 @@
     <div class="loader-logo">نور <span>Noor</span></div>
     <div class="spinner lg"></div>
   </div>
-  <script>document.getElementById('app-loader').style.display='flex';</script>
 
   <!-- ═══════════════════════════════════
        AUTH SCREEN
@@ -2403,9 +2402,9 @@
             <thead><tr>
               <th><span class="ar">المريض</span><span class="en" style="display:none">Patient</span></th>
               <th><span class="ar">الهاتف</span><span class="en" style="display:none">Phone</span></th>
-              <th><span class="ar">العمر</span><span class="en" style="display:none">Age</span></th>
-              <th><span class="ar">تاريخ التسجيل</span><span class="en" style="display:none">Registered</span></th>
-              <th><span class="ar">آخر زيارة</span><span class="en" style="display:none">Last Visit</span></th>
+              <th><span class="ar">آخر فحص</span><span class="en" style="display:none">Last Exam</span></th>
+              <th><span class="ar">الزيارة القادمة</span><span class="en" style="display:none">Next Visit</span></th>
+              <th><span class="ar">الرصيد</span><span class="en" style="display:none">Balance</span></th>
               <th></th>
             </tr></thead>
             <tbody id="patients-tbody">
@@ -2458,6 +2457,38 @@
               <i data-lucide="save"></i>
               <span class="ar">حفظ</span><span class="en" style="display:none">Save</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PATIENT LEDGER MODAL -->
+      <div id="patient-ledger-modal" class="modal-backdrop hidden" onclick="closePatientLedger(event)">
+        <div class="modal modal-lg" onclick="event.stopPropagation()" style="max-height:90vh;display:flex;flex-direction:column">
+          <div class="modal-header" style="flex-shrink:0">
+            <div class="modal-title">
+              <i data-lucide="user" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px"></i>
+              <span id="ledger-pt-name">—</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-ghost btn-sm" id="ledger-edit-btn" onclick="">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button class="btn btn-primary btn-sm" id="ledger-new-rx-btn" onclick="">
+                <i data-lucide="file-plus"></i>
+                <span class="ar">وصفة جديدة</span><span class="en" style="display:none">New Rx</span>
+              </button>
+              <button class="modal-close" onclick="closePatientLedger()"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+
+          <!-- Summary bar -->
+          <div id="ledger-summary-bar" style="display:flex;gap:12px;flex-wrap:wrap;padding:12px 20px;background:var(--bg-elevated);border-bottom:1px solid var(--border);flex-shrink:0"></div>
+
+          <!-- Scrollable body -->
+          <div style="overflow-y:auto;flex:1;padding:20px">
+            <div id="ledger-pt-body">
+              <div class="empty-state"><div class="spinner lg"></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -2556,15 +2587,12 @@
           <table id="lenses-table">
             <thead>
               <tr>
-                <th><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></th>
                 <th><span class="ar">النوع</span><span class="en" style="display:none">Type</span></th>
                 <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
                 <th><span class="ar">الطلاء</span><span class="en" style="display:none">Coating</span></th>
                 <th>SPH</th>
                 <th>CYL</th>
                 <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
-                <th><span class="ar">سعر البيع</span><span class="en" style="display:none">Sell Price</span></th>
-                <th><span class="ar">سعر الشراء</span><span class="en" style="display:none">Cost Price</span></th>
                 <th></th>
               </tr>
             </thead>
@@ -2615,8 +2643,6 @@
                 <th><span class="ar">المقاس</span><span class="en" style="display:none">Size</span></th>
                 <th><span class="ar">المادة</span><span class="en" style="display:none">Material</span></th>
                 <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
-                <th><span class="ar">سعر البيع</span><span class="en" style="display:none">Sell Price</span></th>
-                <th><span class="ar">سعر الشراء</span><span class="en" style="display:none">Cost Price</span></th>
                 <th></th>
               </tr>
             </thead>
@@ -3324,47 +3350,34 @@
   // INIT
   // ─────────────────────────────────────
   async function init() {
-    // Safety net — if anything hangs for 10s, show auth screen
-    const loaderTimeout = setTimeout(() => {
-      console.error('init() timed out — forcing auth screen');
+    // Apply saved theme immediately to avoid flash
+    const savedTheme = localStorage.getItem('noor_theme') || 'dark';
+    applyTheme(savedTheme, false);
+
+    // Apply saved language
+    const savedLang = localStorage.getItem('noor_lang') || 'ar';
+    applyLanguage(savedLang, false);
+
+    lucide.createIcons();
+
+    // Check existing session
+    const { data: { session } } = await sb.auth.getSession();
+
+    if (session) {
+      await loadAppForUser(session.user);
+    } else {
       showScreen('auth');
-    }, 10000);
+    }
 
-    try {
-      // Apply saved theme immediately to avoid flash
-      const savedTheme = localStorage.getItem('noor_theme') || 'dark';
-      applyTheme(savedTheme, false);
-
-      // Apply saved language
-      const savedLang = localStorage.getItem('noor_lang') || 'ar';
-      applyLanguage(savedLang, false);
-
-      lucide.createIcons();
-
-      // Check existing session
-      const { data: { session } } = await sb.auth.getSession();
-
-      if (session) {
+    // Listen for auth changes
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
         await loadAppForUser(session.user);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        App.user = null; App.clinicUser = null; App.clinic = null;
         showScreen('auth');
       }
-
-      // Listen for auth changes
-      sb.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          await loadAppForUser(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          App.user = null; App.clinicUser = null; App.clinic = null;
-          showScreen('auth');
-        }
-      });
-    } catch (err) {
-      console.error('init() error:', err);
-      showScreen('auth');
-    } finally {
-      clearTimeout(loaderTimeout);
-    }
+    });
   }
 
   // ─────────────────────────────────────
@@ -3412,10 +3425,7 @@
 
       App.license = licData;
 
-      // If RPC doesn't exist yet or errors, allow access (dev/setup mode)
-      if (licErr) {
-        console.warn('check_license RPC error (allowing access):', licErr.message);
-      } else if (!licData?.allowed) {
+      if (!licData?.allowed) {
         showScreen('license');
         return;
       }
@@ -4120,7 +4130,13 @@
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px"><div class="spinner lg" style="margin:auto"></div></td></tr>`;
 
     let query = sb.from('patients')
-      .select('id, full_name, phone, dob, gender, created_at', { count: 'exact' })
+      .select(`
+        id, full_name, phone, created_at,
+        prescriptions!prescriptions_patient_id_fkey(
+          exam_date, next_visit_date, checkup,
+          orders(total, paid, remaining, payment_status)
+        )
+      `, { count: 'exact' })
       .eq('clinic_id', cid)
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -4169,29 +4185,47 @@
 
     tbody.innerHTML = Patients.list.map(p => {
       const initials = p.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-      const age      = p.dob ? calcAge(p.dob) : '—';
-      const genderDot = p.gender
-        ? `<span class="gender-dot ${p.gender}"></span>`
-        : '';
+
+      // Sort prescriptions by exam_date desc → newest first
+      const rxs = (p.prescriptions || []).sort((a,b) => (b.exam_date||'') > (a.exam_date||'') ? 1 : -1);
+      const lastRx   = rxs[0] || null;
+      const lastExam = lastRx ? formatDate(lastRx.exam_date) : '—';
+
+      // Next visit: from the most recent prescription with checkup=true
+      const nextVisitRx = rxs.find(r => r.checkup && r.next_visit_date);
+      const nextVisit   = nextVisitRx ? formatDate(nextVisitRx.next_visit_date) : '—';
+
+      // Balance: sum remaining from all orders of all prescriptions
+      let totalRemaining = 0;
+      for (const rx of rxs) {
+        for (const ord of (rx.orders || [])) {
+          totalRemaining += Number(ord.remaining || 0);
+        }
+      }
+      const balanceHtml = totalRemaining > 0
+        ? `<span style="color:var(--danger);font-family:var(--font-mono);font-size:0.8rem;font-weight:600">${totalRemaining.toLocaleString()} IQD</span>`
+        : `<span style="color:var(--success);font-size:0.8rem">✓</span>`;
+
       return `
-        <tr style="cursor:pointer" onclick="openPatientModal('${p.id}')">
+        <tr style="cursor:pointer" onclick="openPatientLedger('${p.id}','${p.full_name.replace(/'/g,"\\'")}')">
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               <div class="patient-avatar">${initials}</div>
               <div>
-                <div style="font-weight:500">${genderDot}${p.full_name}</div>
+                <div style="font-weight:500">${p.full_name}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted)">${p.phone || ''}</div>
               </div>
             </div>
           </td>
           <td class="font-mono text-sm">${p.phone || '—'}</td>
-          <td>${age}</td>
-          <td class="text-sm text-secondary">${formatDate(p.created_at)}</td>
-          <td class="text-sm text-muted">—</td>
+          <td class="text-sm text-secondary">${lastExam}</td>
+          <td class="text-sm" style="color:${nextVisitRx ? 'var(--accent)' : 'var(--text-muted)'}">${nextVisit}</td>
+          <td>${balanceHtml}</td>
           <td>
-            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openPatientModal('${p.id}')">
+            <button class="btn btn-ghost btn-sm" title="Edit" onclick="event.stopPropagation();openPatientModal('${p.id}')">
               <i data-lucide="pencil"></i>
             </button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--accent)" onclick="event.stopPropagation();openRxModal('${p.id}','${p.full_name.replace(/'/g,"\\'")}')">
+            <button class="btn btn-ghost btn-sm" style="color:var(--accent)" title="New Rx" onclick="event.stopPropagation();openRxModal('${p.id}','${p.full_name.replace(/'/g,"\\'")}')">
               <i data-lucide="file-plus"></i>
             </button>
           </td>
@@ -4238,6 +4272,185 @@
     if (p < 1 || p > pages) return;
     Patients.page = p;
     fetchPatients();
+  }
+
+  // ── Patient Ledger ───────────────────────────────
+  async function openPatientLedger(patientId, patientName) {
+    const lang  = App.clinic?.language || 'ar';
+    const modal = document.getElementById('patient-ledger-modal');
+
+    document.getElementById('ledger-pt-name').textContent = patientName;
+    document.getElementById('ledger-pt-body').innerHTML   = '<div class="empty-state"><div class="spinner lg"></div></div>';
+    document.getElementById('ledger-summary-bar').innerHTML = '';
+
+    // Wire buttons
+    document.getElementById('ledger-edit-btn').onclick   = () => { closePatientLedger(); openPatientModal(patientId); };
+    document.getElementById('ledger-new-rx-btn').onclick = () => { closePatientLedger(); openRxModal(patientId, patientName); };
+
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+
+    // Fetch all prescriptions with their orders and payments
+    const { data: rxs, error } = await sb.from('prescriptions')
+      .select(`
+        id, exam_date, next_visit_date, checkup, lens_type, lens_material, coatings, notes,
+        doctors(full_name),
+        orders(id, total, paid, remaining, payment_status, payment_method, lens_id, frame_id,
+          lens_price, frame_price, consult_fee, discount),
+        payments(id, amount, payment_date, payment_method)
+      `)
+      .eq('clinic_id', App.clinic.id)
+      .eq('patient_id', patientId)
+      .order('exam_date', { ascending: false });
+
+    // Fetch lens/frame names for each order
+    const lensIds  = [...new Set((rxs||[]).flatMap(r => (r.orders||[]).map(o => o.lens_id).filter(Boolean)))];
+    const frameIds = [...new Set((rxs||[]).flatMap(r => (r.orders||[]).map(o => o.frame_id).filter(Boolean)))];
+
+    const lensMap = {}, frameMap = {};
+    if (lensIds.length) {
+      const { data: lensRows } = await sb.from('lenses').select('id, brand, lens_type, material').in('id', lensIds);
+      (lensRows||[]).forEach(l => { lensMap[l.id] = [l.brand, LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material].filter(Boolean).join(' · '); });
+    }
+    if (frameIds.length) {
+      const { data: frameRows } = await sb.from('frames').select('id, brand, model, color').in('id', frameIds);
+      (frameRows||[]).forEach(f => { frameMap[f.id] = [f.brand, f.model, f.color].filter(Boolean).join(' · '); });
+    }
+
+    if (error || !rxs?.length) {
+      document.getElementById('ledger-pt-body').innerHTML = `
+        <div class="empty-state" style="padding:40px">
+          <i data-lucide="file-text"></i>
+          <p>${lang === 'ar' ? 'لا توجد وصفات بعد' : 'No prescriptions yet'}</p>
+          <button class="btn btn-primary btn-sm" onclick="closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}')">
+            <i data-lucide="file-plus"></i>
+            <span class="ar">إضافة وصفة</span><span class="en" style="display:none">Add Rx</span>
+          </button>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    // Summary totals
+    let sumTotal = 0, sumPaid = 0, sumRemaining = 0;
+    for (const rx of rxs) {
+      for (const o of (rx.orders||[])) {
+        sumTotal     += Number(o.total     || 0);
+        sumPaid      += Number(o.paid      || 0);
+        sumRemaining += Number(o.remaining || 0);
+      }
+    }
+
+    const fmt = n => n.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US') + ' IQD';
+    document.getElementById('ledger-summary-bar').innerHTML = `
+      <div class="orders-summary-item s-count" style="min-width:80px;flex:unset">
+        <div class="sum-label">${lang === 'ar' ? 'الوصفات' : 'Prescriptions'}</div>
+        <div class="sum-value">${rxs.length}</div>
+      </div>
+      <div class="orders-summary-item s-total" style="min-width:120px;flex:unset">
+        <div class="sum-label">${lang === 'ar' ? 'الإجمالي' : 'Total'}</div>
+        <div class="sum-value">${fmt(sumTotal)}</div>
+      </div>
+      <div class="orders-summary-item s-collected" style="min-width:120px;flex:unset">
+        <div class="sum-label">${lang === 'ar' ? 'المدفوع' : 'Paid'}</div>
+        <div class="sum-value">${fmt(sumPaid)}</div>
+      </div>
+      ${sumRemaining > 0 ? `<div class="orders-summary-item s-remaining" style="min-width:120px;flex:unset">
+        <div class="sum-label">${lang === 'ar' ? 'المتبقي' : 'Remaining'}</div>
+        <div class="sum-value">${fmt(sumRemaining)}</div>
+      </div>` : ''}
+    `;
+
+    // Render each Rx card
+    const coatingLabels = Object.fromEntries((COATINGS||[]).map(c => [c.key, c.en]));
+    const COAT = key => coatingLabels[key] || key;
+    const STAT_BADGE = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
+    const STAT_LABEL = { paid: lang==='ar'?'مدفوع':'Paid', partial: lang==='ar'?'جزئي':'Partial', unpaid: lang==='ar'?'غير مدفوع':'Unpaid' };
+    const METHOD_LABEL = { cash: lang==='ar'?'نقداً':'Cash', transfer: lang==='ar'?'تحويل':'Transfer', card: 'Card' };
+
+    document.getElementById('ledger-pt-body').innerHTML = rxs.map(rx => {
+      const doctor   = rx.doctors?.full_name || '';
+      const coatings = (rx.coatings||[]).map(COAT).join(', ') || '—';
+      const order    = (rx.orders||[])[0] || null;
+      const pmts     = (rx.payments||[]).sort((a,b) => (b.payment_date||'') > (a.payment_date||'') ? 1 : -1);
+
+      const lensName  = order?.lens_id  ? (lensMap[order.lens_id]  || '—') : '—';
+      const frameName = order?.frame_id ? (frameMap[order.frame_id] || '—') : '—';
+
+      const payBadge = order
+        ? `<span class="badge ${STAT_BADGE[order.payment_status]||''}">
+            ${STAT_LABEL[order.payment_status]||order.payment_status}</span>`
+        : '';
+
+      const nextVisitLine = rx.checkup && rx.next_visit_date
+        ? `<div style="margin-top:6px;font-size:0.8rem;color:var(--accent)">
+            <i data-lucide="calendar" style="width:13px;height:13px;vertical-align:middle;margin-inline-end:4px"></i>
+            ${lang==='ar'?'الزيارة القادمة:':'Next visit:'} <strong>${formatDate(rx.next_visit_date)}</strong>
+           </div>`
+        : '';
+
+      const pmtRows = pmts.length
+        ? pmts.map(pmt => `
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:4px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-secondary)">${formatDate(pmt.payment_date)} · ${METHOD_LABEL[pmt.payment_method]||pmt.payment_method}</span>
+            <span style="color:var(--success);font-family:var(--font-mono);font-weight:600">+${Number(pmt.amount).toLocaleString()} IQD</span>
+          </div>`).join('')
+        : '';
+
+      return `
+        <div class="rx-history-item" style="margin-bottom:16px">
+          <div class="rx-history-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+            <div>
+              <div class="rx-history-date">${formatDate(rx.exam_date)}</div>
+              <div class="rx-history-doctor">${doctor}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${payBadge}
+              ${order?.remaining > 0 ? `<span style="font-size:0.8rem;color:var(--danger);font-family:var(--font-mono)">${fmt(order.remaining)}</span>` : ''}
+              <button class="btn btn-ghost btn-sm" title="Edit Rx" onclick="event.stopPropagation();closePatientLedger();openRxModal('${patientId}','${patientName.replace(/'/g,"\\'")}','${rx.id}')">
+                <i data-lucide="pencil"></i>
+              </button>
+            </div>
+          </div>
+          <div class="rx-history-body">
+            <!-- Rx values -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;font-size:0.85rem">
+              <div><span style="color:var(--text-muted)">${lang==='ar'?'النوع:':'Type:'}</span> ${LENS_TYPE_LABELS[rx.lens_type]||rx.lens_type||'—'}</div>
+              <div><span style="color:var(--text-muted)">${lang==='ar'?'المادة:':'Material:'}</span> ${rx.lens_material||'—'}</div>
+              <div><span style="color:var(--text-muted)">${lang==='ar'?'العدسة:':'Lens:'}</span> ${lensName}</div>
+              <div><span style="color:var(--text-muted)">${lang==='ar'?'الإطار:':'Frame:'}</span> ${frameName}</div>
+              <div style="grid-column:1/-1"><span style="color:var(--text-muted)">${lang==='ar'?'الطلاءات:':'Coatings:'}</span> ${coatings}</div>
+              ${rx.notes ? `<div style="grid-column:1/-1"><span style="color:var(--text-muted)">${lang==='ar'?'ملاحظات:':'Notes:'}</span> ${rx.notes}</div>` : ''}
+            </div>
+            ${nextVisitLine}
+            <!-- Financial summary -->
+            ${order ? `
+            <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:10px;margin-top:10px;font-size:0.82rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="color:var(--text-muted)">${lang==='ar'?'إجمالي الفاتورة:':'Invoice total:'}</span>
+                <span style="font-family:var(--font-mono)">${fmt(order.total||0)}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="color:var(--text-muted)">${lang==='ar'?'المدفوع:':'Paid:'}</span>
+                <span style="font-family:var(--font-mono);color:var(--success)">${fmt(order.paid||0)}</span>
+              </div>
+              ${order.remaining > 0 ? `<div style="display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid var(--border)">
+                <span style="color:var(--danger)">${lang==='ar'?'متبقي:':'Remaining:'}</span>
+                <span style="font-family:var(--font-mono);color:var(--danger);font-weight:600">${fmt(order.remaining)}</span>
+              </div>` : ''}
+            </div>` : ''}
+            <!-- Payments -->
+            ${pmtRows ? `<div style="margin-top:10px;font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:4px">${lang==='ar'?'سجل الدفعات':'Payment History'}</div>${pmtRows}` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    lucide.createIcons();
+  }
+
+  function closePatientLedger(e) {
+    if (e && e.target !== document.getElementById('patient-ledger-modal')) return;
+    document.getElementById('patient-ledger-modal').classList.add('hidden');
   }
 
   // ── Search ──────────────────────────────────────
@@ -4848,7 +5061,7 @@
 
     // Build a broad query then filter client-side with ±0.25
     let q = sb.from('lenses')
-      .select('id, name, brand, sph_od, cyl_od, sph_os, cyl_os, quantity, price, lens_type')
+      .select('id, brand, lens_type, material, coating, sphere, cylinder, quantity, sell_price')
       .eq('clinic_id', App.clinic.id)
       .gt('quantity', 0);
 
@@ -4860,8 +5073,7 @@
       container.innerHTML = `<div class="lens-match-result">
         <div class="lens-match-status none">
           <i data-lucide="alert-circle"></i>
-          <span class="ar">لا يوجد تطابق في المخزون</span>
-          <span class="en" style="display:none">No matching lenses in stock</span>
+          <span>${lang === 'ar' ? 'لا يوجد مخزون عدسات بعد' : 'No lenses in inventory yet'}</span>
         </div>
       </div>`;
       lucide.createIcons();
@@ -4869,16 +5081,18 @@
     }
 
     const TOLERANCE = 0.25;
-
-    function withinTol(a, b) {
-      if (a == null || b == null) return true; // null = wildcard
-      return Math.abs(a - b) <= TOLERANCE;
+    function withinTol(rx, inv) {
+      if (rx == null || isNaN(rx)) return true; // no Rx entered = match any
+      return Math.abs(rx - inv) <= TOLERANCE;
     }
 
+    // Match: the single sphere/cylinder value in inventory against each eye
     const matches = lenses.filter(l => {
-      const odOk = withinTol(!isNaN(odSph) ? odSph : null, l.sph_od) && withinTol(!isNaN(odCyl) ? odCyl : null, l.cyl_od);
-      const osOk = withinTol(!isNaN(osSph) ? osSph : null, l.sph_os) && withinTol(!isNaN(osCyl) ? osCyl : null, l.cyl_os);
-      return odOk && osOk;
+      const odOk = withinTol(!isNaN(odSph) ? odSph : null, l.sphere) &&
+                   withinTol(!isNaN(odCyl) ? odCyl : null, l.cylinder);
+      const osOk = withinTol(!isNaN(osSph) ? osSph : null, l.sphere) &&
+                   withinTol(!isNaN(osCyl) ? osCyl : null, l.cylinder);
+      return odOk || osOk; // match if either eye fits
     });
 
     if (!matches.length) {
@@ -4894,19 +5108,18 @@
     }
 
     const items = matches.slice(0, 8).map(l => {
-      const name    = [l.brand, l.name].filter(Boolean).join(' — ');
-      const odStr   = `OD ${fmtRx(l.sph_od)}/${fmtRx(l.cyl_od)}`;
-      const osStr   = `OS ${fmtRx(l.sph_os)}/${fmtRx(l.cyl_os)}`;
+      const name     = [l.brand, LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
+      const rxStr    = `SPH ${(l.sphere >= 0 ? '+' : '')}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
       const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
       const selected = Rx.selectedLensId === l.id ? 'checked' : '';
-      const priceStr = l.price ? l.price.toLocaleString() + ' IQD' : '—';
+      const priceStr = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
 
       return `
         <div class="lens-match-item">
-          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.price || 0})" />
+          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.sell_price || 0})" />
           <div class="lens-match-item-label" style="margin-inline-start:8px">
             <div class="lens-match-item-name">${name}</div>
-            <div class="lens-match-item-vals">${odStr} · ${osStr}</div>
+            <div class="lens-match-item-vals">${rxStr}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
             <span class="lens-match-item-qty">${priceStr}</span>
@@ -5274,19 +5487,18 @@
 
     tbody.innerHTML = LensInv.list.map(l => {
       const qtyClass = l.quantity <= (l.restock_level ?? 2) ? (l.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
-      const sell = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
-      const cost = l.cost_price ? Number(l.cost_price).toLocaleString() + ' IQD' : '—';
+      const MATERIAL_LABELS = { plastic: 'Plastic', glass: 'Glass', contact: 'Contact Lens' };
       return `<tr>
-        <td><span style="font-weight:500">${l.brand || '—'}</span></td>
         <td><span class="badge badge-info">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type}</span></td>
-        <td>${l.material || '—'}</td>
+        <td>${MATERIAL_LABELS[l.material] || l.material || '—'}</td>
         <td>${l.coating || '—'}</td>
         <td class="font-mono">${l.sphere >= 0 ? '+' : ''}${Number(l.sphere).toFixed(2)}</td>
         <td class="font-mono">${Number(l.cylinder || 0).toFixed(2)}</td>
         <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
-        <td class="font-mono">${sell}</td>
-        <td class="font-mono text-muted">${cost}</td>
         <td>
+          <button class="btn btn-ghost btn-sm" onclick="duplicateLensFrom('${l.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}">
+            <i data-lucide="copy"></i>
+          </button>
           <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')">
             <i data-lucide="pencil"></i>
           </button>
@@ -5305,23 +5517,25 @@
     delBtn.style.display = 'none';
 
     // Reset fields
-    ['lens-brand','lens-material','lens-coating','lens-sph','lens-notes'].forEach(id => {
+    ['lens-coating','lens-sph','lens-notes'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
-    document.getElementById('lens-cyl').value      = '0';
-    document.getElementById('lens-qty').value      = '';
-    document.getElementById('lens-restock').value  = '2';
-    document.getElementById('lens-sell-price').value = '';
-    document.getElementById('lens-cost-price').value = '';
-    document.getElementById('lens-type').value     = 'single';
+    document.getElementById('lens-material').value    = '';
+    document.getElementById('lens-cyl').value         = '0';
+    document.getElementById('lens-qty').value         = '';
+    document.getElementById('lens-restock').value     = '2';
+    document.getElementById('lens-sell-price').value  = '';
+    document.getElementById('lens-cost-price').value  = '';
+    document.getElementById('lens-type').value        = 'single';
+    const dupBtn = document.getElementById('lens-duplicate-btn');
 
     if (lensId) {
       LensInv.editingId = lensId;
       delBtn.style.display = '';
+      if (dupBtn) dupBtn.style.display = '';
       document.getElementById('lens-modal-title').innerHTML = '<span class="ar">تعديل العدسة</span><span class="en" style="display:none">Edit Lens</span>';
       const { data: l } = await sb.from('lenses').select('*').eq('id', lensId).single();
       if (l) {
-        document.getElementById('lens-brand').value       = l.brand || '';
         document.getElementById('lens-type').value        = l.lens_type || 'single';
         document.getElementById('lens-material').value    = l.material || '';
         document.getElementById('lens-coating').value     = l.coating || '';
@@ -5334,6 +5548,7 @@
         document.getElementById('lens-notes').value       = l.notes || '';
       }
     } else {
+      if (dupBtn) dupBtn.style.display = 'none';
       document.getElementById('lens-modal-title').innerHTML = '<span class="ar">عدسة جديدة</span><span class="en" style="display:none">New Lens</span>';
     }
 
@@ -5369,9 +5584,8 @@
 
     const payload = {
       clinic_id:     App.clinic.id,
-      brand:         document.getElementById('lens-brand').value.trim()    || null,
       lens_type:     document.getElementById('lens-type').value,
-      material:      document.getElementById('lens-material').value.trim() || null,
+      material:      document.getElementById('lens-material').value || null,
       coating:       document.getElementById('lens-coating').value.trim()  || null,
       sphere:        sph,
       cylinder:      parseFloat(document.getElementById('lens-cyl').value) || 0,
@@ -5413,6 +5627,39 @@
     showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
     document.getElementById('lens-modal').classList.add('hidden');
     loadLenses();
+  }
+
+  // Duplicate from modal (editing an existing lens)
+  async function duplicateLens() {
+    if (!LensInv.editingId) return;
+    const { data: l } = await sb.from('lenses').select('*').eq('id', LensInv.editingId).single();
+    if (!l) return;
+    document.getElementById('lens-modal').classList.add('hidden');
+    LensInv.editingId = null;
+    // Reopen as new, prefilled
+    await openLensModal();
+    // Overwrite form with source values (as new)
+    document.getElementById('lens-type').value        = l.lens_type || 'single';
+    document.getElementById('lens-material').value    = l.material || '';
+    document.getElementById('lens-coating').value     = l.coating || '';
+    document.getElementById('lens-sph').value         = l.sphere ?? '';
+    document.getElementById('lens-cyl').value         = l.cylinder ?? 0;
+    document.getElementById('lens-qty').value         = l.quantity ?? 0;
+    document.getElementById('lens-restock').value     = l.restock_level ?? 2;
+    document.getElementById('lens-sell-price').value  = l.sell_price || '';
+    document.getElementById('lens-cost-price').value  = l.cost_price || '';
+    document.getElementById('lens-notes').value       = l.notes || '';
+    const lang = App.clinic?.language || 'ar';
+    document.getElementById('lens-modal-title').innerHTML = lang === 'ar'
+      ? '<span class="ar">نسخة من عدسة</span>'
+      : '<span class="en">Copy of Lens</span>';
+    document.getElementById('lens-duplicate-btn').style.display = 'none';
+  }
+
+  // Duplicate from table row (opens prefilled new modal directly)
+  async function duplicateLensFrom(lensId) {
+    LensInv.editingId = lensId;
+    await duplicateLens();
   }
 
   // ── FRAMES ──────────────────────────────────────────
@@ -5460,8 +5707,6 @@
 
     tbody.innerHTML = FrameInv.list.map(f => {
       const qtyClass = f.quantity <= (f.restock_level ?? 1) ? (f.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
-      const sell = f.sell_price ? Number(f.sell_price).toLocaleString() + ' IQD' : '—';
-      const cost = f.cost_price ? Number(f.cost_price).toLocaleString() + ' IQD' : '—';
       const typeLabel = FRAME_TYPE_LABELS[f.frame_type] || '—';
       return `<tr>
         <td><span style="font-weight:500">${f.brand || '—'}</span></td>
@@ -5471,9 +5716,10 @@
         <td class="font-mono text-secondary">${f.size || '—'}</td>
         <td>${f.material || '—'}</td>
         <td><span class="badge ${qtyClass}">${f.quantity}</span></td>
-        <td class="font-mono">${sell}</td>
-        <td class="font-mono text-muted">${cost}</td>
         <td>
+          <button class="btn btn-ghost btn-sm" onclick="duplicateFrameFrom('${f.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}">
+            <i data-lucide="copy"></i>
+          </button>
           <button class="btn btn-ghost btn-sm" onclick="openFrameModal('${f.id}')">
             <i data-lucide="pencil"></i>
           </button>
@@ -5487,22 +5733,25 @@
     const lang   = App.clinic?.language || 'ar';
     const errEl  = document.getElementById('frame-form-error');
     const delBtn = document.getElementById('frame-delete-btn');
+    const dupBtn = document.getElementById('frame-duplicate-btn');
     errEl.classList.add('hidden');
     FrameInv.editingId = null;
     delBtn.style.display = 'none';
+    if (dupBtn) dupBtn.style.display = 'none';
 
     ['frame-brand','frame-model','frame-color','frame-size','frame-material','frame-notes'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
-    document.getElementById('frame-qty').value       = '';
-    document.getElementById('frame-restock').value   = '1';
+    document.getElementById('frame-qty').value        = '';
+    document.getElementById('frame-restock').value    = '1';
     document.getElementById('frame-sell-price').value = '';
     document.getElementById('frame-cost-price').value = '';
-    document.getElementById('frame-type').value      = '';
+    document.getElementById('frame-type').value       = '';
 
     if (frameId) {
       FrameInv.editingId = frameId;
       delBtn.style.display = '';
+      if (dupBtn) dupBtn.style.display = '';
       document.getElementById('frame-modal-title').innerHTML = '<span class="ar">تعديل الإطار</span><span class="en" style="display:none">Edit Frame</span>';
       const { data: f } = await sb.from('frames').select('*').eq('id', frameId).single();
       if (f) {
@@ -5592,6 +5841,35 @@
     showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
     document.getElementById('frame-modal').classList.add('hidden');
     loadFrames();
+  }
+
+  async function duplicateFrame() {
+    if (!FrameInv.editingId) return;
+    const { data: f } = await sb.from('frames').select('*').eq('id', FrameInv.editingId).single();
+    if (!f) return;
+    document.getElementById('frame-modal').classList.add('hidden');
+    FrameInv.editingId = null;
+    await openFrameModal();
+    document.getElementById('frame-brand').value       = f.brand || '';
+    document.getElementById('frame-model').value       = f.model || '';
+    document.getElementById('frame-type').value        = f.frame_type || '';
+    document.getElementById('frame-color').value       = f.color || '';
+    document.getElementById('frame-size').value        = f.size || '';
+    document.getElementById('frame-material').value    = f.material || '';
+    document.getElementById('frame-qty').value         = f.quantity ?? 0;
+    document.getElementById('frame-restock').value     = f.restock_level ?? 1;
+    document.getElementById('frame-sell-price').value  = f.sell_price || '';
+    document.getElementById('frame-cost-price').value  = f.cost_price || '';
+    document.getElementById('frame-notes').value       = f.notes || '';
+    const lang = App.clinic?.language || 'ar';
+    document.getElementById('frame-modal-title').innerHTML = lang === 'ar' ? '<span class="ar">نسخة من إطار</span>' : '<span class="en">Copy of Frame</span>';
+    const dupBtn = document.getElementById('frame-duplicate-btn');
+    if (dupBtn) dupBtn.style.display = 'none';
+  }
+
+  async function duplicateFrameFrom(frameId) {
+    FrameInv.editingId = frameId;
+    await duplicateFrame();
   }
 
 
@@ -6536,10 +6814,6 @@
           <div class="modal-body">
             <div class="grid-2">
               <div class="form-group">
-                <label class="form-label"><span class="ar">الماركة</span><span class="en" style="display:none">Brand</span></label>
-                <input type="text" id="lens-brand" class="form-control" />
-              </div>
-              <div class="form-group">
                 <label class="form-label"><span class="ar">النوع *</span><span class="en" style="display:none">Type *</span></label>
                 <select id="lens-type" class="form-control">
                   <option value="single">Single Vision</option>
@@ -6550,7 +6824,12 @@
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">المادة</span><span class="en" style="display:none">Material</span></label>
-                <input type="text" id="lens-material" class="form-control" placeholder="e.g. CR-39, 1.67, Poly" />
+                <select id="lens-material" class="form-control">
+                  <option value="">—</option>
+                  <option value="plastic">Plastic</option>
+                  <option value="glass">Glass</option>
+                  <option value="contact">Contact Lens</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">الطلاء</span><span class="en" style="display:none">Coating</span></label>
@@ -6591,6 +6870,10 @@
             <button class="btn btn-danger btn-sm" id="lens-delete-btn" onclick="deleteLens()" style="display:none;margin-inline-end:auto">
               <i data-lucide="trash-2"></i>
               <span class="ar">حذف</span><span class="en" style="display:none">Delete</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="lens-duplicate-btn" onclick="duplicateLens()" style="display:none;margin-inline-end:auto">
+              <i data-lucide="copy"></i>
+              <span class="ar">نسخ</span><span class="en" style="display:none">Duplicate</span>
             </button>
             <button class="btn btn-secondary" onclick="closeLensModal()">
               <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
@@ -6675,6 +6958,10 @@
             <button class="btn btn-danger btn-sm" id="frame-delete-btn" onclick="deleteFrame()" style="display:none;margin-inline-end:auto">
               <i data-lucide="trash-2"></i>
               <span class="ar">حذف</span><span class="en" style="display:none">Delete</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="frame-duplicate-btn" onclick="duplicateFrame()" style="display:none;margin-inline-end:auto">
+              <i data-lucide="copy"></i>
+              <span class="ar">نسخ</span><span class="en" style="display:none">Duplicate</span>
             </button>
             <button class="btn btn-secondary" onclick="closeFrameModal()">
               <span class="ar">إلغاء</span><span class="en" style="display:none">Cancel</span>
