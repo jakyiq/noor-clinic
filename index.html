@@ -5306,28 +5306,35 @@
       const name     = [LENS_TYPE_LABELS[l.lens_type]||l.lens_type, l.material, l.coating].filter(Boolean).join(' · ');
       const rxStr    = `SPH ${(l.sphere >= 0 ? '+' : '')}${Number(l.sphere).toFixed(2)}  CYL ${Number(l.cylinder||0).toFixed(2)}`;
       const qtyClass = l.quantity > 5 ? 'ok' : l.quantity > 0 ? 'low' : 'out';
-      const selected = Rx.selectedLensId === l.id ? 'checked' : '';
+      const isSelected = Rx.selectedLensId === l.id;
       const priceStr = l.sell_price ? Number(l.sell_price).toLocaleString() + ' IQD' : '—';
+      const selStyle = isSelected
+        ? 'border-color:var(--success);background:rgba(29,184,126,0.08);'
+        : '';
 
       return `
-        <div class="lens-match-item">
-          <input type="radio" name="lens-match" value="${l.id}" ${selected} onchange="selectLens('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}')" />
-          <div class="lens-match-item-label" style="margin-inline-start:8px">
+        <div class="lens-match-item" id="lens-card-${l.id}"
+          style="cursor:pointer;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:4px;border:1px solid var(--border);${selStyle}display:flex;align-items:center;gap:10px;"
+          onclick="selectLens('${l.id}', ${l.sell_price || 0}, '${l.lens_type || ''}', '${l.material || ''}')">
+          <div style="width:16px;height:16px;border-radius:50%;border:2px solid ${isSelected ? 'var(--success)' : 'var(--border)'};background:${isSelected ? 'var(--success)' : 'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            ${isSelected ? '<div style="width:6px;height:6px;border-radius:50%;background:#fff"></div>' : ''}
+          </div>
+          <div class="lens-match-item-label" style="flex:1;min-width:0">
             <div class="lens-match-item-name">${name}</div>
             <div class="lens-match-item-vals">${rxStr}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
-            <span class="lens-match-item-qty">${priceStr}</span>
+            <span class="lens-match-item-qty" style="color:var(--text-primary);font-weight:600">${priceStr}</span>
             <span class="lens-match-item-qty ${qtyClass}">${lang === 'ar' ? 'ك: ' : 'Qty: '}${l.quantity}</span>
           </div>
         </div>`;
     }).join('');
 
-    container.innerHTML = `<div class="lens-match-result">
-      <div class="lens-match-status found">
+    container.innerHTML = `<div class="lens-match-result" style="background:transparent;border:none;padding:0;margin-top:4px;">
+      <div class="lens-match-status found" style="margin-bottom:6px;">
         <i data-lucide="check-circle"></i>
         <span class="ar">وُجد ${matches.length} تطابق — اختر العدسة</span>
-        <span class="en" style="display:none">${matches.length} match(es) found — select lens</span>
+        <span class="en" style="display:none">${matches.length} match(es) found — tap to select</span>
       </div>
       ${items}
     </div>`;
@@ -5342,6 +5349,18 @@
       document.getElementById('rx-lens-type').value = lensType;
     if (material && !document.getElementById('rx-lens-material').value)
       document.getElementById('rx-lens-material').value = material;
+    // Visually update all lens cards
+    document.querySelectorAll('[id^="lens-card-"]').forEach(card => {
+      const isThis = card.id === 'lens-card-' + lensId;
+      card.style.borderColor    = isThis ? 'var(--success)' : 'var(--border)';
+      card.style.background     = isThis ? 'rgba(29,184,126,0.08)' : '';
+      const dot = card.querySelector('div');
+      if (dot) {
+        dot.style.borderColor = isThis ? 'var(--success)' : 'var(--border)';
+        dot.style.background  = isThis ? 'var(--success)' : 'transparent';
+        dot.innerHTML = isThis ? '<div style="width:6px;height:6px;border-radius:50%;background:#fff"></div>' : '';
+      }
+    });
     recalcTotal();
   }
 
@@ -5371,19 +5390,22 @@
 
     container.innerHTML = data.map(f => {
       const name     = [f.brand, f.model].filter(Boolean).join(' — ');
-      const meta     = [f.color, f.size, f.material].filter(Boolean).join(' · ');
+      const meta     = [f.color, f.size, f.material ? FRAME_MATERIAL_LABELS[f.material] || f.material : null].filter(Boolean).join(' · ');
       const qtyClass = f.quantity > 3 ? 'ok' : f.quantity > 0 ? 'low' : 'out';
       const qtyTxt   = lang === 'ar' ? `ك: ${f.quantity}` : `Qty: ${f.quantity}`;
-      const selected = Rx.selectedFrameId === f.id ? 'selected' : '';
+      const isSelected = Rx.selectedFrameId === f.id;
+      const selected = isSelected ? 'selected' : '';
       const priceStr = f.sell_price ? f.sell_price.toLocaleString() + ' IQD' : '';
+      const checkMark = isSelected ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success);flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>` : '';
 
       return `
         <div class="frame-match-card ${selected}" onclick="selectFrame('${f.id}', '${name.replace(/'/g,"\\'")}', ${f.sell_price || 0}, '${f.frame_type || ''}', '${f.material || ''}', this)">
           <div class="frame-match-info">
             <div class="frame-match-name">${name}</div>
-            <div class="frame-match-meta">${meta}${priceStr ? ' · ' + priceStr : ''}</div>
+            <div class="frame-match-meta">${meta}${priceStr ? ' · <strong style="color:var(--text-primary)">' + priceStr + '</strong>' : ''}</div>
           </div>
           <div class="frame-match-qty ${qtyClass}">${qtyTxt}</div>
+          ${checkMark}
         </div>`;
     }).join('');
   }
@@ -5394,10 +5416,17 @@
     document.getElementById('rx-frame-price').value = price || '';
     if (frameType)     document.getElementById('rx-frame-type').value     = frameType;
     if (frameMaterial) document.getElementById('rx-frame-material').value = frameMaterial;
-    // Highlight selected card
-    document.querySelectorAll('.frame-match-card').forEach(c => c.classList.remove('selected'));
-    const card = el ? el.closest('.frame-match-card') || el : null;
-    if (card) card.classList.add('selected');
+    // Highlight selected card and update checkmarks
+    document.querySelectorAll('.frame-match-card').forEach(c => {
+      c.classList.remove('selected');
+      const svg = c.querySelector('svg');
+      if (svg) svg.remove();
+    });
+    const card = el ? (el.classList.contains('frame-match-card') ? el : el.closest('.frame-match-card')) : null;
+    if (card) {
+      card.classList.add('selected');
+      card.insertAdjacentHTML('beforeend', `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success);flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>`);
+    }
     recalcTotal();
   }
 
