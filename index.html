@@ -7324,10 +7324,11 @@
       <span class="info-label">${isAr ? 'الهاتف:' : 'Phone:'}</span>
       <span class="info-value">${patient.phone}</span>
     </div>` : '<div></div>'}
+    ${docName && docName !== '—' ? `
     <div class="info-row">
       <span class="info-label">${isAr ? 'الطبيب:' : 'Doctor:'}</span>
       <span class="info-value">${docName}</span>
-    </div>
+    </div>` : '<div></div>'}
     ${patient?.address ? `
     <div class="info-row" style="grid-column:1/-1">
       <span class="info-label">${isAr ? 'العنوان:' : 'Address:'}</span>
@@ -7436,6 +7437,7 @@
   <div class="notes-box">${rx.notes}</div>` : ''}
 
   <!-- ── DOCTOR SIGNATURE LINE ── -->
+  ${docName && docName !== '—' ? `
   <div class="sig-line">
     <div class="sig-inner">
       <div class="sig-inner-top">
@@ -7443,7 +7445,7 @@
         ${docPhone ? `<br/>${isAr ? 'ت:' : 'Tel:'} ${docPhone}` : ''}
       </div>
     </div>
-  </div>
+  </div>` : ''}
 
   <!-- ── FOOTER WITH QR AT BOTTOM ── -->
   <div class="footer-wrap">
@@ -7458,7 +7460,9 @@
         &nbsp;|&nbsp; Rx# ${rxId.slice(-8).toUpperCase()}
       </div>
     </div>
-    ${qrSrc ? `<div class="footer-qr"><img src="${qrSrc}" width="64" height="64" alt="QR" /></div>` : ''}
+    ${qrSrc && (qrSrc.startsWith('data:') || qrSrc.startsWith('https://'))
+      ? `<div class="footer-qr"><img src="${qrSrc}" width="64" height="64" alt="QR" /></div>`
+      : ''}
   </div>
 
 </div><!-- /slip -->
