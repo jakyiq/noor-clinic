@@ -510,6 +510,14 @@
 
     .btn-secondary:hover { background: var(--bg-hover); }
 
+    .btn-warning {
+      background: rgba(240,165,0,0.12);
+      color: var(--warning);
+      border-color: rgba(240,165,0,0.35);
+    }
+
+    .btn-warning:hover { background: rgba(240,165,0,0.2); }
+
     .btn-ghost {
       background: transparent;
       color: var(--text-secondary);
@@ -2638,6 +2646,13 @@
               <option value="progressive">Progressive</option>
               <option value="plano">Plano</option>
             </select>
+            <!-- Power search fields -->
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap">SPH</span>
+              <input type="number" id="lenses-filter-sph" class="form-control" step="0.25" placeholder="e.g. -2.00" style="width:90px;padding:6px 8px;font-size:0.82rem" oninput="debounceLensSearch()" title="Filter by Sphere power" />
+              <span style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap">CYL</span>
+              <input type="number" id="lenses-filter-cyl" class="form-control" step="0.25" placeholder="e.g. -1.00" style="width:90px;padding:6px 8px;font-size:0.82rem" oninput="debounceLensSearch()" title="Filter by Cylinder power" />
+            </div>
           </div>
           <div class="page-toolbar-end">
             <button class="btn btn-secondary btn-sm" onclick="openLensOnboarding()" title="Setup wizard">
@@ -2663,6 +2678,7 @@
                 <th>SPH</th>
                 <th>CYL</th>
                 <th><span class="ar">الكمية</span><span class="en" style="display:none">Qty</span></th>
+                <th><span class="ar">حد الطلب</span><span class="en" style="display:none">Min Stock</span></th>
                 <th></th>
               </tr>
             </thead>
@@ -5982,8 +5998,10 @@
     rows:     [],   // [{type,material,coating,sphere,cylinder,qty,price}] — the review table
   };
 
-  function openLensOnboarding() {
+  async function openLensOnboarding() {
     const lang = App.clinic?.language || 'ar';
+    const cid  = App.clinic?.id;
+
     // Update welcome text based on language
     const t = document.getElementById('ob-welcome-title');
     const d = document.getElementById('ob-welcome-desc');
@@ -5991,6 +6009,47 @@
       if (t) t.textContent = 'إعداد مخزون العدسات';
       if (d) d.textContent = 'سنملأ مخزونك بالعدسات التي تبيعها فعلاً. يستغرق ذلك دقيقة واحدة — أو تخطَّ وأضف العدسات يدوياً.';
     }
+
+    // Fetch distinct types, materials, coatings from existing prescriptions to filter wizard options
+    const { data: rxRows } = await sb.from('prescriptions')
+      .select('lens_type, lens_material, coatings')
+      .eq('clinic_id', cid);
+
+    const usedTypes    = new Set((rxRows||[]).map(r => r.lens_type).filter(Boolean));
+    const usedMaterials= new Set((rxRows||[]).map(r => r.lens_material).filter(Boolean));
+    const usedCoatings = new Set((rxRows||[]).flatMap(r => r.coatings||[]).filter(Boolean));
+
+    // Re-render chips based on what is actually used in prescriptions (or show all if none found)
+    const allTypes    = ['single','bifocal','progressive','plano'];
+    const allMaterials= ['plastic','glass','contact'];
+    const allCoatings = ['AR','Blue Cut','Photochromic','UV400','Hardened','Mirror',''];
+    const coatingLabels = { 'AR':'Anti-Reflective (AR)', 'Blue Cut':'Blue Cut', 'Photochromic':'Photochromic', 'UV400':'UV400', 'Hardened':'Hardened', 'Mirror':'Mirror', '':'None / Plain' };
+    const typeLabels  = { single:'Single Vision', bifocal:'Bifocal', progressive:'Progressive', plano:'Plano' };
+    const matLabels   = { plastic:'Plastic', glass:'Glass', contact:'Contact Lens' };
+
+    const typesToShow    = usedTypes.size    > 0 ? allTypes.filter(v => usedTypes.has(v))     : allTypes;
+    const materialsToShow= usedMaterials.size> 0 ? allMaterials.filter(v => usedMaterials.has(v)) : allMaterials;
+    const coatingsToShow = usedCoatings.size > 0 ? allCoatings.filter(v => usedCoatings.has(v) || v === '') : allCoatings;
+
+    const typeChips = document.getElementById('ob-chips-type');
+    if (typeChips) {
+      typeChips.innerHTML = typesToShow.map(v =>
+        `<button class="ob-chip selected" data-val="${v}" onclick="obToggleChip(this,'ob-chips-type')">${typeLabels[v]||v}</button>`
+      ).join('');
+    }
+    const matChips = document.getElementById('ob-chips-material');
+    if (matChips) {
+      matChips.innerHTML = materialsToShow.map(v =>
+        `<button class="ob-chip selected" data-val="${v}" onclick="obToggleChip(this,'ob-chips-material')">${matLabels[v]||v}</button>`
+      ).join('');
+    }
+    const coatChips = document.getElementById('ob-chips-coating');
+    if (coatChips) {
+      coatChips.innerHTML = coatingsToShow.map(v =>
+        `<button class="ob-chip selected" data-val="${v}" onclick="obToggleChip(this,'ob-chips-coating')">${coatingLabels[v]||v||'None / Plain'}</button>`
+      ).join('');
+    }
+
     obGoScreen('ob-screen-welcome');
     document.getElementById('lens-onboarding-backdrop').classList.remove('hidden');
     obUpdateRange();
@@ -6131,6 +6190,7 @@
     lbl.textContent = 'Saving…';
 
     const clinic_id = App.clinic.id;
+    const defaultRestock = parseInt(document.getElementById('ob-default-restock')?.value) || 2;
     const inserts = OB.rows.map(row => ({
       clinic_id,
       lens_type:     row.type,
@@ -6140,7 +6200,7 @@
       cylinder:      Number(row.cylinder),
       quantity:      parseInt(row.qty)   || 0,
       sell_price:    parseFloat(row.price) || 0,
-      restock_level: 2,
+      restock_level: defaultRestock,
     }));
 
     // Insert in batches of 50 to avoid payload limits
@@ -6168,17 +6228,27 @@
     const cid     = App.clinic?.id;
     const search  = document.getElementById('lenses-search')?.value?.trim() || '';
     const typeFilter = document.getElementById('lenses-filter-type')?.value || '';
+    const sphFilter  = document.getElementById('lenses-filter-sph')?.value?.trim() || '';
+    const cylFilter  = document.getElementById('lenses-filter-cyl')?.value?.trim() || '';
     const tbody   = document.getElementById('lenses-tbody');
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>';
 
     let query = sb.from('lenses')
       .select('*')
       .eq('clinic_id', cid)
-      .order('brand', { ascending: true })
-      .order('sphere',   { ascending: true });
+      .order('sphere',   { ascending: true })
+      .order('cylinder', { ascending: true });
 
     if (typeFilter) query = query.eq('lens_type', typeFilter);
     if (search)     query = query.or(`brand.ilike.%${search}%,material.ilike.%${search}%,coating.ilike.%${search}%`);
+    if (sphFilter !== '') {
+      const sphVal = parseFloat(sphFilter);
+      if (!isNaN(sphVal)) query = query.gte('sphere', sphVal - 0.001).lte('sphere', sphVal + 0.001);
+    }
+    if (cylFilter !== '') {
+      const cylVal = parseFloat(cylFilter);
+      if (!isNaN(cylVal)) query = query.gte('cylinder', cylVal - 0.001).lte('cylinder', cylVal + 0.001);
+    }
 
     const { data, error } = await query;
     LensInv.list = data || [];
@@ -6195,7 +6265,7 @@
     applyLanguage(lang, false);
 
     if (error || !LensInv.list.length) {
-      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i data-lucide="circle-dot"></i>
+      tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><i data-lucide="circle-dot"></i>
         <p>${lang === 'ar' ? 'لا توجد عدسات مضافة' : 'No lenses added yet'}</p>
         <button class="btn btn-primary btn-sm" onclick="openLensOnboarding()" style="margin-top:12px">
           <i data-lucide="wand-2"></i>
@@ -6207,7 +6277,9 @@
     }
 
     tbody.innerHTML = LensInv.list.map(l => {
-      const qtyClass = l.quantity <= (l.restock_level ?? 2) ? (l.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
+      const restockLevel = l.restock_level ?? 2;
+      const isLow = l.quantity <= restockLevel;
+      const qtyClass = isLow ? (l.quantity === 0 ? 'badge-danger' : 'badge-warning') : 'badge-success';
       const MATERIAL_LABELS = { plastic: 'Plastic', glass: 'Glass', contact: 'Contact Lens' };
       return `<tr>
         <td><span class="badge badge-info">${LENS_TYPE_LABELS[l.lens_type] || l.lens_type}</span></td>
@@ -6216,8 +6288,13 @@
         <td class="font-mono">${l.sphere >= 0 ? '+' : ''}${Number(l.sphere).toFixed(2)}</td>
         <td class="font-mono">${Number(l.cylinder || 0).toFixed(2)}</td>
         <td><span class="badge ${qtyClass}">${l.quantity}</span></td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="duplicateLensFrom('${l.id}')" title="${App.clinic?.language==='ar'?'نسخ':'Duplicate'}" style="padding:6px 8px">
+        <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.82rem">${restockLevel}</td>
+        <td style="white-space:nowrap">
+          ${isLow ? `<button class="btn btn-warning btn-sm" onclick="openLensRestockModal('${l.id}')" title="${lang==='ar'?'إعادة التخزين':'Restock'}" style="padding:4px 10px;font-size:0.78rem;background:rgba(240,165,0,0.15);color:var(--warning);border-color:rgba(240,165,0,0.4)">
+            <i data-lucide="package-plus" style="width:14px;height:14px"></i>
+            ${lang==='ar'?'طلب':'Restock'}
+          </button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="duplicateLensFrom('${l.id}')" title="${lang==='ar'?'نسخ':'Duplicate'}" style="padding:6px 8px">
             <i data-lucide="copy" style="width:18px;height:18px"></i>
           </button>
           <button class="btn btn-ghost btn-sm" onclick="openLensModal('${l.id}')" style="padding:6px 8px">
@@ -6227,6 +6304,13 @@
       </tr>`;
     }).join('');
     lucide.createIcons();
+  }
+
+  // Quick-restock modal: opens lens modal and pre-focuses the qty field
+  async function openLensRestockModal(lensId) {
+    await openLensModal(lensId);
+    const qtyEl = document.getElementById('lens-qty');
+    if (qtyEl) { qtyEl.focus(); qtyEl.select(); }
   }
 
   async function openLensModal(lensId = null) {
@@ -6348,6 +6432,18 @@
     showToast(lang === 'ar' ? 'تم الحذف' : 'Deleted', 'success');
     document.getElementById('lens-modal').classList.add('hidden');
     loadLenses();
+  }
+
+  async function clearAllLenses() {
+    const lang = App.clinic?.language || 'ar';
+    const confirmMsg = lang === 'ar'
+      ? 'هل أنت متأكد من حذف جميع العدسات نهائياً؟ لا يمكن التراجع عن هذه العملية.'
+      : 'Are you sure you want to delete ALL lenses permanently? This cannot be undone.';
+    if (!confirm(confirmMsg)) return;
+    const { error } = await sb.from('lenses').delete().eq('clinic_id', App.clinic.id);
+    if (error) { showToast(lang === 'ar' ? 'فشل الحذف الكامل' : 'Failed to clear lenses', 'error'); return; }
+    showToast(lang === 'ar' ? 'تم حذف جميع العدسات' : 'All lenses cleared', 'success');
+    obGoScreen('ob-screen-welcome');
   }
 
   // Duplicate from modal (editing an existing lens)
@@ -8185,6 +8281,8 @@
   window.toggleRxHistoryPanel = toggleRxHistoryPanel;
   window.saveLens          = saveLens;
   window.deleteLens        = deleteLens;
+  window.clearAllLenses    = clearAllLenses;
+  window.openLensRestockModal = openLensRestockModal;
   window.duplicateLens     = duplicateLens;
   window.closeLensModal    = closeLensModal;
   window.saveFrame         = saveFrame;
@@ -8222,12 +8320,24 @@
               </div>
               <h2 id="ob-welcome-title">Set Up Your Lens Inventory</h2>
               <p id="ob-welcome-desc">Let's pre-populate your inventory with the lenses you actually stock. It only takes a minute — or skip and add lenses manually.</p>
+              <!-- Default restock level -->
+              <div style="margin:0 auto 16px;max-width:360px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;text-align:left">
+                <label style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px">Default Min Stock (Restock At)</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="number" id="ob-default-restock" class="form-control" min="0" value="2" placeholder="2" style="width:80px;text-align:center;padding:6px 10px" />
+                  <span style="font-size:0.8rem;color:var(--text-muted)">Alert when quantity falls to or below this number</span>
+                </div>
+              </div>
               <div class="ob-welcome-actions">
                 <button class="btn btn-primary" onclick="obStart()">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                   Get Started
                 </button>
                 <button class="btn btn-secondary" onclick="obDismiss()">Start Fresh — I'll add manually</button>
+                <button class="btn btn-danger btn-sm" onclick="clearAllLenses()" style="margin-top:4px;font-size:0.8rem;opacity:0.8">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Clear All Lenses
+                </button>
               </div>
             </div>
           </div>
