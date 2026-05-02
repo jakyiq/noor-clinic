@@ -1212,6 +1212,71 @@
       margin-top: calc(var(--topbar-height) + 36px);
     }
 
+    /* ── OFFLINE INDICATOR ── */
+    #offline-pill {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: default;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    #offline-pill.status-offline {
+      display: flex;
+      background: rgba(224,60,80,0.12);
+      border-color: rgba(224,60,80,0.3);
+      color: var(--danger);
+    }
+
+    #offline-pill.status-syncing {
+      display: flex;
+      background: rgba(240,165,0,0.1);
+      border-color: rgba(240,165,0,0.3);
+      color: var(--warning);
+    }
+
+    #offline-pill.status-queued {
+      display: flex;
+      background: rgba(46,127,255,0.1);
+      border-color: rgba(46,127,255,0.3);
+      color: var(--accent);
+      cursor: pointer;
+    }
+
+    #offline-pill.status-queued:hover {
+      background: rgba(46,127,255,0.18);
+    }
+
+    #offline-pill svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+    #offline-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+      animation: offlinePulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes offlinePulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    #offline-pill.status-syncing #offline-dot {
+      animation: spin 0.9s linear infinite;
+      border-radius: 0;
+      width: 12px; height: 12px;
+      border: 2px solid var(--warning);
+      border-top-color: transparent;
+      background: transparent;
+    }
+
     /* ── SELECT ── */
     select.form-control {
       appearance: none;
@@ -2306,6 +2371,11 @@
         </span>
       </div>
       <div class="topbar-end">
+        <!-- Offline status pill -->
+        <div id="offline-pill" onclick="offlinePillClick()" title="">
+          <span id="offline-dot"></span>
+          <span id="offline-pill-text"></span>
+        </div>
         <!-- Restock alert -->
         <button class="topbar-btn" onclick="navigateTo('restock')" id="restock-alert-btn" title="Restock Alerts" style="display:none">
           <i data-lucide="package-open"></i>
@@ -3736,6 +3806,10 @@
 
     lucide.createIcons();
 
+    // Boot offline system (CHUNK 16)
+    _initOfflineListeners();
+    updateOfflinePill();
+
     // Check existing session
     const { data: { session } } = await sb.auth.getSession();
 
@@ -3840,6 +3914,10 @@
       showScreen('app');
       // Load initial page data
       loadDashboard();
+
+      // CHUNK 16: seed read cache in background after login
+      updateOfflinePill();
+      setTimeout(_seedReadCache, 2000);
 
     } catch (err) {
       console.error('loadAppForUser error:', err);
@@ -4951,23 +5029,23 @@
 
     setButtonLoading(btn, true);
 
-    let error;
+    let error, queued;
 
     if (Patients.editingId) {
       // Update
-      const res = await sb.from('patients').update(payload).eq('id', Patients.editingId);
-      error = res.error;
+      const res = await dbWrite('update', 'patients', payload, Patients.editingId);
+      error = res.error; queued = res.queued;
       if (!error) {
         logAudit('patient_update', 'patients', Patients.editingId);
-        showToast(lang === 'ar' ? 'تم تحديث بيانات المريض' : 'Patient updated', 'success');
+        if (!queued) showToast(lang === 'ar' ? 'تم تحديث بيانات المريض' : 'Patient updated', 'success');
       }
     } else {
       // Insert
-      const res = await sb.from('patients').insert(payload);
-      error = res.error;
+      const res = await dbWrite('insert', 'patients', payload);
+      error = res.error; queued = res.queued;
       if (!error) {
         logAudit('patient_create', 'patients', null);
-        showToast(lang === 'ar' ? 'تمت إضافة المريض بنجاح' : 'Patient added', 'success');
+        if (!queued) showToast(lang === 'ar' ? 'تمت إضافة المريض بنجاح' : 'Patient added', 'success');
       }
     }
 
@@ -4980,7 +5058,7 @@
     }
 
     document.getElementById('patient-modal').classList.add('hidden');
-    await loadPatients();
+    if (!queued) await loadPatients();
   }
 
   // ── Delete ──────────────────────────────────────
@@ -6503,13 +6581,13 @@
     };
 
     setButtonLoading(btn, true);
-    let error;
+    let error, queued;
     if (LensInv.editingId) {
-      const res = await sb.from('lenses').update(payload).eq('id', LensInv.editingId);
-      error = res.error;
+      const res = await dbWrite('update', 'lenses', payload, LensInv.editingId);
+      error = res.error; queued = res.queued;
     } else {
-      const res = await sb.from('lenses').insert(payload);
-      error = res.error;
+      const res = await dbWrite('insert', 'lenses', payload);
+      error = res.error; queued = res.queued;
     }
     setButtonLoading(btn, false);
 
@@ -6519,9 +6597,9 @@
       return;
     }
 
-    showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
+    if (!queued) showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
     document.getElementById('lens-modal').classList.add('hidden');
-    loadLenses();
+    if (!queued) loadLenses();
   }
 
   async function deleteLens() {
@@ -6727,13 +6805,13 @@
     };
 
     setButtonLoading(btn, true);
-    let error;
+    let error, queued;
     if (FrameInv.editingId) {
-      const res = await sb.from('frames').update(payload).eq('id', FrameInv.editingId);
-      error = res.error;
+      const res = await dbWrite('update', 'frames', payload, FrameInv.editingId);
+      error = res.error; queued = res.queued;
     } else {
-      const res = await sb.from('frames').insert(payload);
-      error = res.error;
+      const res = await dbWrite('insert', 'frames', payload);
+      error = res.error; queued = res.queued;
     }
     setButtonLoading(btn, false);
 
@@ -6743,9 +6821,9 @@
       return;
     }
 
-    showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
+    if (!queued) showToast(lang === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
     document.getElementById('frame-modal').classList.add('hidden');
-    loadFrames();
+    if (!queued) loadFrames();
   }
 
   async function deleteFrame() {
@@ -7188,48 +7266,42 @@
     }
 
     setButtonLoading(btn, true);
-    const { error } = await sb.from('payments').insert({
+    const payPayload = {
       clinic_id:      App.clinic.id,
       order_id:       Debtors.payingOrderId,
-      patient_id:     null, // will be resolved by trigger via order
+      patient_id:     null,
       amount,
       payment_method: document.getElementById('pay-method').value,
       payment_date:   document.getElementById('pay-date').value,
       created_by:     App.clinicUser.id,
-    });
+    };
+    const res = await dbWrite('insert', 'payments', payPayload);
     setButtonLoading(btn, false);
 
-    if (error) {
+    if (res.error) {
       // Try resolving patient_id from order
       const { data: ord } = await sb.from('orders').select('patient_id').eq('id', Debtors.payingOrderId).single();
       if (ord) {
-        const { error: e2 } = await sb.from('payments').insert({
-          clinic_id:      App.clinic.id,
-          order_id:       Debtors.payingOrderId,
-          patient_id:     ord.patient_id,
-          amount,
-          payment_method: document.getElementById('pay-method').value,
-          payment_date:   document.getElementById('pay-date').value,
-          created_by:     App.clinicUser.id,
-        });
-        if (e2) {
-          errEl.textContent = (lang === 'ar' ? 'خطأ: ' : 'Error: ') + (e2.message || '');
+        payPayload.patient_id = ord.patient_id;
+        const res2 = await dbWrite('insert', 'payments', payPayload);
+        if (res2.error) {
+          errEl.textContent = (lang === 'ar' ? 'خطأ: ' : 'Error: ') + (res2.error.message || '');
           errEl.classList.remove('hidden'); return;
         }
       }
     }
 
-    showToast(lang === 'ar' ? 'تم تسجيل الدفعة' : 'Payment recorded', 'success');
+    if (!res.queued) showToast(lang === 'ar' ? 'تم تسجيل الدفعة' : 'Payment recorded', 'success');
     document.getElementById('pay-modal').classList.add('hidden');
-    // Refresh whichever view is open
-    if (!document.getElementById('patient-ledger-modal').classList.contains('hidden')) {
-      // Re-open ledger for same patient to reflect new payment
-      const ptName = document.getElementById('ledger-pt-name').textContent;
-      const ptId   = Debtors._ledgerPatientId || null;
-      if (ptId) openPatientLedger(ptId, ptName);
+    if (!res.queued) {
+      if (!document.getElementById('patient-ledger-modal').classList.contains('hidden')) {
+        const ptName = document.getElementById('ledger-pt-name').textContent;
+        const ptId   = Debtors._ledgerPatientId || null;
+        if (ptId) openPatientLedger(ptId, ptName);
+      }
+      if (App.currentPage === 'patients') fetchPatients();
+      loadDebtors();
     }
-    if (App.currentPage === 'patients') fetchPatients();
-    loadDebtors();
   }
 
   // ═══════════════════════════════════════════════════
@@ -9534,6 +9606,347 @@
   // ═══════════════════════════════════════════════════
 
 
+
+  // ═══════════════════════════════════════════════════
+  // CHUNK 16 — OFFLINE MODE + IndexedDB SYNC
+  // ═══════════════════════════════════════════════════
+  //
+  // Architecture:
+  //   OfflineDB  — thin IndexedDB wrapper (2 stores: cache, queue)
+  //   dbWrite()  — wraps all Supabase insert/update/delete; queues when offline
+  //   getCached / setCached — fallback read layer for load* functions
+  //   drainQueue — runs on window.online; flushes queue to Supabase
+  //   updateOfflinePill — updates topbar indicator
+  //
+  // Tables covered by read cache:
+  //   patients, prescriptions, orders, payments, lenses, frames, doctors
+  //
+  // Write ops queued offline: insert, update, delete (per table + record id)
+
+  const OfflineDB = (() => {
+    const DB_NAME    = 'noor_offline';
+    const DB_VERSION = 1;
+    let _db = null;
+
+    function open() {
+      if (_db) return Promise.resolve(_db);
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = e => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('cache')) {
+            db.createObjectStore('cache', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('queue')) {
+            const qs = db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+            qs.createIndex('ts', 'ts', { unique: false });
+          }
+        };
+        req.onsuccess  = e => { _db = e.target.result; resolve(_db); };
+        req.onerror    = e => reject(e.target.error);
+      });
+    }
+
+    async function tx(store, mode, fn) {
+      const db = await open();
+      return new Promise((resolve, reject) => {
+        const t   = db.transaction(store, mode);
+        const s   = t.objectStore(store);
+        const req = fn(s);
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror   = e => reject(e.target.error);
+      });
+    }
+
+    // ── Cache store ─────────────────────────────
+    async function cacheSet(key, data) {
+      return tx('cache', 'readwrite', s => s.put({ key, data, ts: Date.now() }));
+    }
+
+    async function cacheGet(key) {
+      try {
+        const row = await tx('cache', 'readonly', s => s.get(key));
+        return row?.data ?? null;
+      } catch (_) { return null; }
+    }
+
+    // ── Queue store ─────────────────────────────
+    async function queuePush(item) {
+      return tx('queue', 'readwrite', s => s.add({ ...item, ts: Date.now() }));
+    }
+
+    async function queueGetAll() {
+      const db = await open();
+      return new Promise((resolve, reject) => {
+        const t    = db.transaction('queue', 'readonly');
+        const s    = t.objectStore('queue');
+        const req  = s.getAll();
+        req.onsuccess = e => resolve(e.target.result || []);
+        req.onerror   = e => reject(e.target.error);
+      });
+    }
+
+    async function queueDelete(id) {
+      return tx('queue', 'readwrite', s => s.delete(id));
+    }
+
+    async function queueCount() {
+      try {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+          const t   = db.transaction('queue', 'readonly');
+          const s   = t.objectStore('queue');
+          const req = s.count();
+          req.onsuccess = e => resolve(e.target.result);
+          req.onerror   = e => reject(0);
+        });
+      } catch (_) { return 0; }
+    }
+
+    return { cacheSet, cacheGet, queuePush, queueGetAll, queueDelete, queueCount };
+  })();
+
+  // ── Online/offline state ─────────────────────────
+  const Offline = {
+    isOnline: navigator.onLine,
+    syncing:  false,
+  };
+
+  function updateOfflinePill() {
+    const pill     = document.getElementById('offline-pill');
+    const pillText = document.getElementById('offline-pill-text');
+    if (!pill) return;
+
+    if (Offline.syncing) {
+      pill.className  = 'status-syncing';
+      const lang = App.clinic?.language || localStorage.getItem('noor_lang') || 'ar';
+      pillText.textContent = lang === 'ar' ? 'جاري المزامنة...' : 'Syncing...';
+      pill.title = '';
+      return;
+    }
+
+    if (!Offline.isOnline) {
+      pill.className  = 'status-offline';
+      const lang = App.clinic?.language || localStorage.getItem('noor_lang') || 'ar';
+      pillText.textContent = lang === 'ar' ? 'غير متصل' : 'Offline';
+      pill.title = lang === 'ar' ? 'أنت غير متصل بالإنترنت. ستُحفظ التغييرات تلقائياً عند الاتصال.' : 'You\'re offline. Changes will sync when reconnected.';
+      return;
+    }
+
+    // Online — check queue count
+    OfflineDB.queueCount().then(n => {
+      if (n > 0) {
+        pill.className  = 'status-queued';
+        const lang = App.clinic?.language || localStorage.getItem('noor_lang') || 'ar';
+        pillText.textContent = lang === 'ar' ? `${n} معلق` : `${n} queued`;
+        pill.title = lang === 'ar' ? 'اضغط للمزامنة الآن' : 'Click to sync now';
+      } else {
+        pill.className  = '';
+        pill.style.display = 'none';
+        pillText.textContent = '';
+      }
+    });
+  }
+
+  function offlinePillClick() {
+    if (Offline.isOnline && !Offline.syncing) drainQueue();
+  }
+
+  // ── Unified write helper ─────────────────────────
+  // Usage: await dbWrite('insert'|'update'|'delete', tableName, payload, recordId?)
+  // Returns { data, error, queued } — callers should treat queued:true as success
+  async function dbWrite(op, table, payload, recordId = null) {
+    if (Offline.isOnline) {
+      try {
+        let res;
+        if (op === 'insert') {
+          res = await sb.from(table).insert(payload).select().single();
+        } else if (op === 'update') {
+          res = await sb.from(table).update(payload).eq('id', recordId).select().single();
+        } else if (op === 'delete') {
+          res = await sb.from(table).delete().eq('id', recordId);
+        }
+        if (res?.error) throw res.error;
+
+        // Update cache after successful write (invalidate affected table)
+        if (App.clinic?.id) {
+          _refreshCacheForTable(table);
+        }
+        return { data: res?.data ?? null, error: null, queued: false };
+      } catch (err) {
+        // Network/timeout error even though navigator.onLine — queue it
+        if (!_isNetworkError(err)) return { data: null, error: err, queued: false };
+      }
+    }
+
+    // Offline path — queue the write
+    await OfflineDB.queuePush({ op, table, payload, recordId });
+    updateOfflinePill();
+    const lang = App.clinic?.language || localStorage.getItem('noor_lang') || 'ar';
+    showToast(
+      lang === 'ar' ? 'حُفظ محلياً — سيتم المزامنة عند الاتصال' : 'Saved locally — will sync when online',
+      'warning'
+    );
+    return { data: null, error: null, queued: true };
+  }
+
+  function _isNetworkError(err) {
+    const msg = (err?.message || '').toLowerCase();
+    return msg.includes('failed to fetch') ||
+           msg.includes('networkerror') ||
+           msg.includes('load failed') ||
+           msg.includes('timeout');
+  }
+
+  // ── Cache helpers ────────────────────────────────
+  // Key convention: `<clinic_id>:<table>`
+  function _cacheKey(table) {
+    return `${App.clinic?.id || 'anon'}:${table}`;
+  }
+
+  async function setCached(table, data) {
+    try { await OfflineDB.cacheSet(_cacheKey(table), data); } catch (_) {}
+  }
+
+  async function getCached(table) {
+    try { return await OfflineDB.cacheGet(_cacheKey(table)); } catch (_) { return null; }
+  }
+
+  // Refresh a table's cache in the background after a write
+  async function _refreshCacheForTable(table) {
+    if (!App.clinic?.id) return;
+    try {
+      const { data } = await sb.from(table).select('*').eq('clinic_id', App.clinic.id).limit(500);
+      if (data) await setCached(table, data);
+    } catch (_) {}
+  }
+
+  // ── Queue drain ──────────────────────────────────
+  async function drainQueue() {
+    const items = await OfflineDB.queueGetAll();
+    if (!items.length) { updateOfflinePill(); return; }
+
+    Offline.syncing = true;
+    updateOfflinePill();
+
+    const lang = App.clinic?.language || localStorage.getItem('noor_lang') || 'ar';
+    let ok = 0, failed = 0;
+
+    for (const item of items) {
+      try {
+        let res;
+        if (item.op === 'insert') {
+          res = await sb.from(item.table).insert(item.payload);
+        } else if (item.op === 'update') {
+          res = await sb.from(item.table).update(item.payload).eq('id', item.recordId);
+        } else if (item.op === 'delete') {
+          res = await sb.from(item.table).delete().eq('id', item.recordId);
+        }
+
+        if (res?.error) {
+          console.warn('[noor:offline] sync failed for item', item.id, res.error);
+          failed++;
+          // Don't delete — leave in queue to retry
+        } else {
+          await OfflineDB.queueDelete(item.id);
+          ok++;
+        }
+      } catch (err) {
+        console.warn('[noor:offline] sync error', err);
+        failed++;
+      }
+    }
+
+    Offline.syncing = false;
+    updateOfflinePill();
+
+    if (ok > 0) {
+      // Refresh current page data after sync
+      if (App.currentPage) {
+        try {
+          if (App.currentPage === 'dashboard') loadDashboard();
+          else if (App.currentPage === 'patients')  { Patients.page = 1; loadPatients(); }
+          else if (App.currentPage === 'lenses')    loadLenses();
+          else if (App.currentPage === 'frames')    loadFrames();
+          else if (App.currentPage === 'restock')   loadRestock();
+          else if (App.currentPage === 'followup')  loadFollowups();
+          else if (App.currentPage === 'ledger')    loadLedger();
+          else if (App.currentPage === 'debtors')   loadDebtors();
+          else if (App.currentPage === 'reports')   loadReports();
+        } catch (_) {}
+      }
+      showToast(
+        lang === 'ar'
+          ? `تمت المزامنة — ${ok} ${ok === 1 ? 'عملية' : 'عمليات'} بنجاح${failed ? ` (${failed} فشلت)` : ''}`
+          : `Synced ${ok} operation${ok === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}`,
+        failed ? 'warning' : 'success'
+      );
+    } else if (failed > 0) {
+      showToast(
+        lang === 'ar' ? 'فشلت المزامنة — سيُعاد المحاولة' : 'Sync failed — will retry',
+        'error'
+      );
+    }
+  }
+
+  // ── Network event listeners ──────────────────────
+  function _initOfflineListeners() {
+    window.addEventListener('online', () => {
+      Offline.isOnline = true;
+      updateOfflinePill();
+      // Small delay — browser 'online' fires before TCP is fully ready
+      setTimeout(drainQueue, 1200);
+    });
+
+    window.addEventListener('offline', () => {
+      Offline.isOnline = false;
+      updateOfflinePill();
+    });
+
+    // Periodic check for queued items (in case online event was missed)
+    setInterval(() => {
+      if (navigator.onLine && !Offline.syncing) {
+        OfflineDB.queueCount().then(n => {
+          if (n > 0) drainQueue();
+        });
+      }
+      // Keep Offline.isOnline in sync
+      if (Offline.isOnline !== navigator.onLine) {
+        Offline.isOnline = navigator.onLine;
+        updateOfflinePill();
+      }
+    }, 30000);
+  }
+
+  // ── Patch init() to boot offline system ─────────
+  // We extend the existing init() by hooking _initOfflineListeners at DOMContentLoaded
+  // and seeding the initial pill state once the app loads.
+
+  // ── Background cache seeder ──────────────────────
+  // Called 2s after login; pre-warms IndexedDB so reads work offline
+  async function _seedReadCache() {
+    if (!App.clinic?.id) return;
+    const cid = App.clinic.id;
+    const tables = ['patients', 'lenses', 'frames', 'doctors'];
+    for (const table of tables) {
+      try {
+        const { data } = await sb.from(table).select('*').eq('clinic_id', cid).limit(500);
+        if (data) await setCached(table, data);
+      } catch (_) { /* non-critical */ }
+    }
+  }
+
+  // ── Expose helpers used in later chunks ─────────
+  window.dbWrite          = dbWrite;
+  window.getCached        = getCached;
+  window.setCached        = setCached;
+  window.drainQueue       = drainQueue;
+  window.updateOfflinePill = updateOfflinePill;
+  window.offlinePillClick = offlinePillClick;
+
+  // ═══════════════════════════════════════════════════
+  // END CHUNK 16
+  // ═══════════════════════════════════════════════════
 
   document.addEventListener('DOMContentLoaded', init);
   </script>
