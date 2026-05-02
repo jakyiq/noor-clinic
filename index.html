@@ -2530,15 +2530,8 @@
                 <input type="tel" id="pt-phone" class="form-control" />
               </div>
               <div class="form-group">
-                <label class="form-label"><span class="ar">تاريخ الميلاد</span><span class="en" style="display:none">Date of Birth</span></label>
-                <input type="date" id="pt-dob" class="form-control" onchange="updatePatientAge()" />
-              </div>
-              <div class="form-group">
                 <label class="form-label"><span class="ar">العمر (سنة)</span><span class="en" style="display:none">Age (years)</span></label>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <input type="number" id="pt-age" class="form-control" min="0" max="120" placeholder="—" style="flex:1" onchange="updatePatientDobFromAge()" />
-                  <span id="pt-age-display" style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;min-width:60px"></span>
-                </div>
+                <input type="number" id="pt-age" class="form-control" min="0" max="120" placeholder="—" />
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">الجنس</span><span class="en" style="display:none">Gender</span></label>
@@ -4515,7 +4508,7 @@
 
     let query = sb.from('patients')
       .select(`
-        id, full_name, phone, date_of_birth, age, gender, address, notes, created_at,
+        id, full_name, phone, age, gender, address, notes, created_at,
         prescriptions!prescriptions_patient_id_fkey(
           exam_date, next_visit_date, checkup,
           orders(total, paid, remaining, payment_status)
@@ -4569,7 +4562,7 @@
 
     tbody.innerHTML = Patients.list.map(p => {
       const initials = p.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-      const ageDisplay = p.date_of_birth ? calcAge(p.date_of_birth) : (p.age || null);
+      const ageDisplay = p.age || null;
       const genderDot  = p.gender === 'male' ? `<span class="gender-dot male"></span>` : p.gender === 'female' ? `<span class="gender-dot female"></span>` : '';
 
       // Sort prescriptions by exam_date desc → newest first
@@ -4863,25 +4856,6 @@
     return Math.max(0, age);
   }
 
-  function updatePatientAge() {
-    const dob = document.getElementById('pt-dob').value;
-    if (!dob) return;
-    const age = calcAge(dob);
-    document.getElementById('pt-age').value = age;
-    document.getElementById('pt-age-display').textContent = age + ' yr';
-  }
-
-  function updatePatientDobFromAge() {
-    const age = parseInt(document.getElementById('pt-age').value);
-    if (isNaN(age) || age < 0) return;
-    document.getElementById('pt-age-display').textContent = age + ' yr';
-    // Only auto-fill DOB if not already set
-    if (!document.getElementById('pt-dob').value) {
-      const year = new Date().getFullYear() - age;
-      document.getElementById('pt-dob').value = `${year}-01-01`;
-    }
-  }
-
   // ── Search ──────────────────────────────────────
   function debouncePatientSearch(val) {
     clearTimeout(Patients.searchTimer);
@@ -4903,12 +4877,10 @@
     // Reset form
     document.getElementById('pt-name').value    = '';
     document.getElementById('pt-phone').value   = '';
-    document.getElementById('pt-dob').value     = '';
     document.getElementById('pt-age').value     = '';
     document.getElementById('pt-gender').value  = '';
     document.getElementById('pt-address').value = '';
     document.getElementById('pt-notes').value   = '';
-    document.getElementById('pt-age-display').textContent = '';
     errEl.classList.add('hidden');
     Patients.editingId = null;
     delBtn.style.display = 'none';
@@ -4929,18 +4901,12 @@
       Patients.editingId                          = p.id;
       document.getElementById('pt-name').value    = p.full_name    || '';
       document.getElementById('pt-phone').value   = p.phone        || '';
-      document.getElementById('pt-dob').value     = p.date_of_birth || '';
       document.getElementById('pt-gender').value  = p.gender       || '';
       document.getElementById('pt-address').value = p.address      || '';
       document.getElementById('pt-notes').value   = p.notes        || '';
-      // Populate age from DOB or stored age
-      if (p.date_of_birth) {
-        const age = calcAge(p.date_of_birth);
-        document.getElementById('pt-age').value = age;
-        document.getElementById('pt-age-display').textContent = age + ' yr';
-      } else if (p.age) {
+      // Populate age from stored age
+      if (p.age) {
         document.getElementById('pt-age').value = p.age;
-        document.getElementById('pt-age-display').textContent = p.age + ' yr';
       }
     } else {
       title.innerHTML = `<span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>`;
@@ -4973,7 +4939,6 @@
       return;
     }
 
-    const dobVal    = document.getElementById('pt-dob').value.trim()     || null;
     const ageVal    = parseInt(document.getElementById('pt-age').value)   || null;
     const genderVal = document.getElementById('pt-gender').value.trim()   || null;
 
@@ -4981,8 +4946,7 @@
       clinic_id:     App.clinic.id,
       full_name:     name,
       phone:         document.getElementById('pt-phone').value.trim()   || null,
-      date_of_birth: dobVal,
-      age:           dobVal ? calcAge(dobVal) : ageVal,
+      age:           ageVal,
       gender:        genderVal,
       address:       document.getElementById('pt-address').value.trim() || null,
       notes:         document.getElementById('pt-notes').value.trim()   || null,
@@ -9204,7 +9168,7 @@
     showToast(App.clinic?.language==='ar' ? 'جارٍ تجميع البيانات…' : 'Fetching patient data…', 'info');
 
     const [patientsRes, ordersRes, rxRes] = await Promise.all([
-      sb.from('patients').select('id, full_name, phone, date_of_birth, age, gender, address, notes, created_at').eq('clinic_id', cid).order('created_at', { ascending: false }),
+      sb.from('patients').select('id, full_name, phone, age, gender, address, notes, created_at').eq('clinic_id', cid).order('created_at', { ascending: false }),
       sb.from('orders').select('patient_id, total, paid, remaining, payment_status, order_date').eq('clinic_id', cid),
       sb.from('prescriptions').select('patient_id, exam_date, od_sph, od_cyl, os_sph, os_cyl, lens_type, lens_material, coatings').eq('clinic_id', cid).order('exam_date', { ascending: false }),
     ]);
@@ -9219,14 +9183,11 @@
     const rxByPt = {};
     rxs.forEach(r => { (rxByPt[r.patient_id] = rxByPt[r.patient_id]||[]).push(r); });
 
-    const calcPtAge = p => {
-      if (p.date_of_birth) return calcAge(p.date_of_birth);
-      return p.age || '';
-    };
+    const calcPtAge = p => p.age || '';
 
     // ── Sheet 1: Full Patient List ──
     const ptHeader = [
-      'Full Name','Phone','Age','Gender','Date of Birth','Address',
+      'Full Name','Phone','Age','Gender','Address',
       'Registered','Total Visits','Total Spent (IQD)','Paid (IQD)','Remaining (IQD)','Payment Status','Notes'
     ];
     const ptRows = patients.map(p => {
@@ -9238,7 +9199,7 @@
       const statuses   = [...new Set(ptOrders.map(o=>o.payment_status))].join(', ');
       return [
         p.full_name, p.phone||'', calcPtAge(p)||'', p.gender||'',
-        p.date_of_birth||'', p.address||'',
+        p.address||'',
         p.created_at?.slice(0,10)||'',
         ptRxs.length, totalSpent, totalPaid, totalRem, statuses, p.notes||'',
       ];
@@ -9347,9 +9308,9 @@
 
   function exportPatientsCSV() {
     const cid = App.clinic?.id;
-    sb.from('patients').select('full_name,phone,date_of_birth,age,gender,address,notes,created_at').eq('clinic_id',cid).then(({data}) => {
-      const header = ['Full Name','Phone','Age','Gender','Date of Birth','Address','Registered','Notes'];
-      const rows = (data||[]).map(p => [p.full_name,p.phone||'',calcAge(p.date_of_birth)||p.age||'',p.gender||'',p.date_of_birth||'',p.address||'',p.created_at?.slice(0,10)||'',p.notes||'']);
+    sb.from('patients').select('full_name,phone,age,gender,address,notes,created_at').eq('clinic_id',cid).then(({data}) => {
+      const header = ['Full Name','Phone','Age','Gender','Address','Registered','Notes'];
+      const rows = (data||[]).map(p => [p.full_name,p.phone||'',p.age||'',p.gender||'',p.address||'',p.created_at?.slice(0,10)||'',p.notes||'']);
       downloadCSV([header,...rows], `patients_${todayISO()}`);
     });
   }
@@ -9532,8 +9493,6 @@
   window.exportFramesExcel    = exportFramesExcel;
   window.exportReportsCSV     = exportReportsCSV;
   window.exportReportsExcel   = exportReportsExcel;
-  window.updatePatientAge        = updatePatientAge;
-  window.updatePatientDobFromAge = updatePatientDobFromAge;
   window.selectLensForEye  = selectLensForEye;
   window.updateLensPrice   = updateLensPrice;
   window.selectFrame       = selectFrame;
@@ -9791,7 +9750,20 @@
               </div>
               <div class="form-group">
                 <label class="form-label"><span class="ar">الطلاء</span><span class="en" style="display:none">Coating</span></label>
-                <input type="text" id="lens-coating" class="form-control" placeholder="e.g. AR, Blue Cut" />
+                <select id="lens-coating" class="form-control">
+                  <option value="">— None —</option>
+                  <option value="Anti-Reflective (AR)">Anti-Reflective (AR)</option>
+                  <option value="UV Protection">UV Protection</option>
+                  <option value="Blue Light Cut">Blue Light Cut</option>
+                  <option value="Green Light Cut">Green Light Cut</option>
+                  <option value="Filter">Filter</option>
+                  <option value="Photochromic Filter">Photochromic Filter</option>
+                  <option value="Photochromic Blue Light Cut">Photochromic Blue Light Cut</option>
+                  <option value="Photochromic Green Light Cut">Photochromic Green Light Cut</option>
+                  <option value="Photochromic Clear (White)">Photochromic Clear (White)</option>
+                  <option value="Polarized">Polarized</option>
+                  <option value="Tint">Tint</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label">SPH *</label>
