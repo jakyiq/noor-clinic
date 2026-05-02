@@ -8380,7 +8380,7 @@
   }
   function buildCSV(rows) { return rows.map(r => r.map(csvCell).join(',')).join('\r\n'); }
   function triggerDownload(content, filename, mime) {
-    const blob = new Blob([typeof content === 'string' ? [content] : [content]], { type: mime });
+    const blob = new Blob([content], { type: mime });
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
     document.body.appendChild(a); a.click(); a.remove();
