@@ -1850,6 +1850,72 @@
       .eye-input { padding: 6px 4px; font-size: 0.8rem; }
     }
 
+    /* ══════════════════════════════════════
+       LENS ONBOARDING WIZARD
+    ══════════════════════════════════════ */
+    #lens-onboarding-backdrop {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,0.72);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      animation: fadeInBackdrop 0.25s ease;
+    }
+    @keyframes fadeInBackdrop { from { opacity:0 } to { opacity:1 } }
+    #lens-onboarding-backdrop.hidden { display: none; }
+    .ob-wizard {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); width: 100%; max-width: 640px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+      animation: obSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes obSlideIn {
+      from { opacity:0; transform:translateY(24px) scale(0.97) }
+      to   { opacity:1; transform:translateY(0) scale(1) }
+    }
+    .ob-header { padding: 24px 24px 0; }
+    .ob-progress-track { height: 4px; background: var(--border); border-radius: 99px; margin-bottom: 20px; overflow: hidden; }
+    .ob-progress-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.4s cubic-bezier(0.16,1,0.3,1); }
+    .ob-step-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+    .ob-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; line-height: 1.35; }
+    .ob-subtitle { font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 18px; }
+    .ob-body { padding: 0 24px 8px; }
+    .ob-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .ob-chip {
+      padding: 7px 16px; border-radius: 99px; border: 1.5px solid var(--border);
+      background: transparent; color: var(--text-primary); font-size: 0.82rem;
+      font-weight: 500; cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .ob-chip:hover { border-color: var(--primary); color: var(--primary); }
+    .ob-chip.selected { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .ob-range-row { display: grid; grid-template-columns: 40px 1fr 64px; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .ob-range-row label { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); }
+    .ob-range-row input[type=range] { accent-color: var(--primary); cursor: pointer; }
+    .ob-range-val { font-size: 0.82rem; font-weight: 700; color: var(--primary); text-align: right; font-variant-numeric: tabular-nums; }
+    .ob-step-panel { display: none; }
+    .ob-step-panel.active { display: block; }
+    .ob-qty-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .ob-qty-table th { text-align: left; padding: 7px 8px; color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ob-qty-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .ob-qty-table tr:last-child td { border-bottom: none; }
+    .ob-qty-input, .ob-price-input { padding: 5px 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.82rem; text-align: center; }
+    .ob-qty-input { width: 64px; }
+    .ob-price-input { width: 90px; }
+    .ob-qty-input:focus, .ob-price-input:focus { outline: none; border-color: var(--primary); }
+    .ob-footer { padding: 16px 24px 20px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); margin-top: 16px; gap: 10px; }
+    .ob-footer-right { display: flex; gap: 8px; }
+    .ob-skip-link { font-size: 0.8rem; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+    .ob-skip-link:hover { color: var(--text-primary); }
+    .ob-welcome { padding: 32px 24px 8px; text-align: center; }
+    .ob-welcome-icon { width: 60px; height: 60px; border-radius: 18px; background: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .ob-welcome h2 { font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+    .ob-welcome p { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; max-width: 420px; margin: 0 auto 28px; }
+    .ob-welcome-actions { display: flex; flex-direction: column; gap: 10px; max-width: 360px; margin: 0 auto 16px; }
+    .ob-welcome-actions .btn { justify-content: center; width: 100%; }
+    .ob-hint { font-size: 0.76rem; color: var(--text-secondary); margin-top: 8px; font-style: italic; }
+    .ob-section-label { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); margin: 14px 0 8px; }
+    .ob-section-label:first-child { margin-top: 0; }
+
   </style>
 </head>
 <body>
@@ -2574,6 +2640,10 @@
             </select>
           </div>
           <div class="page-toolbar-end">
+            <button class="btn btn-secondary btn-sm" onclick="openLensOnboarding()" title="Setup wizard">
+              <i data-lucide="wand-2"></i>
+              <span class="ar">معالج الإعداد</span><span class="en" style="display:none">Setup Wizard</span>
+            </button>
             <button class="btn btn-primary btn-sm" onclick="openLensModal()">
               <i data-lucide="plus"></i>
               <span class="ar">عدسة جديدة</span><span class="en" style="display:none">Add Lens</span>
@@ -5898,6 +5968,201 @@
     LensInv.searchTimer = setTimeout(() => loadLenses(), 350);
   }
 
+  // ═══════════════════════════════════════════════════
+  // LENS ONBOARDING WIZARD
+  // ═══════════════════════════════════════════════════
+
+  const OB = {
+    types:    [],   // selected lens types
+    materials:[],   // selected materials
+    coatings: [],   // selected coatings
+    sphMin:  -6,
+    sphMax:   6,
+    cylMax:   2,
+    rows:     [],   // [{type,material,coating,sphere,cylinder,qty,price}] — the review table
+  };
+
+  function openLensOnboarding() {
+    const lang = App.clinic?.language || 'ar';
+    // Update welcome text based on language
+    const t = document.getElementById('ob-welcome-title');
+    const d = document.getElementById('ob-welcome-desc');
+    if (lang === 'ar') {
+      if (t) t.textContent = 'إعداد مخزون العدسات';
+      if (d) d.textContent = 'سنملأ مخزونك بالعدسات التي تبيعها فعلاً. يستغرق ذلك دقيقة واحدة — أو تخطَّ وأضف العدسات يدوياً.';
+    }
+    obGoScreen('ob-screen-welcome');
+    document.getElementById('lens-onboarding-backdrop').classList.remove('hidden');
+    obUpdateRange();
+  }
+
+  function obDismiss() {
+    document.getElementById('lens-onboarding-backdrop').classList.add('hidden');
+    loadLenses(); // refresh in case anything was imported
+  }
+
+  function obGoScreen(id) {
+    document.querySelectorAll('.ob-step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function obStart() { obGoScreen('ob-screen-1'); }
+
+  function obToggleChip(el, groupId) {
+    el.classList.toggle('selected');
+  }
+
+  function obGetSelected(groupId) {
+    return Array.from(document.querySelectorAll(`#${groupId} .ob-chip.selected`))
+      .map(c => c.dataset.val);
+  }
+
+  function obStep1Next() {
+    OB.types = obGetSelected('ob-chips-type');
+    if (!OB.types.length) {
+      showToast('Please select at least one lens type', 'error'); return;
+    }
+    obGoScreen('ob-screen-2');
+  }
+
+  function obStep2Next() {
+    OB.materials = obGetSelected('ob-chips-material');
+    OB.coatings  = obGetSelected('ob-chips-coating');
+    if (!OB.materials.length) {
+      showToast('Please select at least one material', 'error'); return;
+    }
+    if (!OB.coatings.length) OB.coatings = [''];
+    obGoScreen('ob-screen-3');
+    obUpdateRange();
+  }
+
+  function obUpdateRange() {
+    OB.sphMin = parseFloat(document.getElementById('ob-sph-min').value);
+    OB.sphMax = parseFloat(document.getElementById('ob-sph-max').value);
+    OB.cylMax = parseFloat(document.getElementById('ob-cyl-max').value);
+
+    const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+    document.getElementById('ob-sph-min-val').textContent = fmt(OB.sphMin);
+    document.getElementById('ob-sph-max-val').textContent = fmt(OB.sphMax);
+    document.getElementById('ob-cyl-max-val').textContent = '±' + OB.cylMax.toFixed(2);
+
+    // Estimate count — types × materials × coatings × sph_steps × cyl_steps
+    // Only count if types/materials already chosen
+    const types   = OB.types.length   || obGetSelected('ob-chips-type').length     || 3;
+    const mats    = OB.materials.length|| obGetSelected('ob-chips-material').length || 1;
+    const coats   = OB.coatings.length || obGetSelected('ob-chips-coating').length  || 1;
+    const sphSteps = Math.round((OB.sphMax - OB.sphMin) / 0.25) + 1;
+    const cylSteps = OB.cylMax > 0 ? Math.round(OB.cylMax / 0.25) + 1 : 1;
+    const est = types * mats * coats * sphSteps * cylSteps;
+
+    const el = document.getElementById('ob-preview-count');
+    if (el) el.innerHTML = `This will generate approximately <strong>${est}</strong> lens entries. You can remove any in the next step.`;
+  }
+
+  function obStep3Next() {
+    OB.sphMin = parseFloat(document.getElementById('ob-sph-min').value);
+    OB.sphMax = parseFloat(document.getElementById('ob-sph-max').value);
+    OB.cylMax = parseFloat(document.getElementById('ob-cyl-max').value);
+
+    // Build all combinations
+    OB.rows = [];
+    const r = v => Math.round(v * 100) / 100; // remove float jitter
+    for (const type of OB.types) {
+      for (const material of OB.materials) {
+        for (const coating of OB.coatings) {
+          for (let sph = OB.sphMin; sph <= OB.sphMax + 0.001; sph += 0.25) {
+            const cylValues = OB.cylMax > 0
+              ? Array.from({ length: Math.round(OB.cylMax / 0.25) + 1 }, (_, i) => r(i * 0.25))
+              : [0];
+            for (const cyl of cylValues) {
+              OB.rows.push({ type, material, coating, sphere: r(sph), cylinder: cyl, qty: '', price: '' });
+            }
+          }
+        }
+      }
+    }
+
+    obRenderReviewTable();
+    obGoScreen('ob-screen-4');
+  }
+
+  function obRenderReviewTable() {
+    const tbody = document.getElementById('ob-review-tbody');
+    const TLBL = { single:'Single Vision', bifocal:'Bifocal', progressive:'Progressive', plano:'Plano' };
+    const MLBL = { plastic:'Plastic', glass:'Glass', contact:'Contact' };
+    const fmt = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2);
+
+    tbody.innerHTML = OB.rows.map((row, i) => `
+      <tr id="ob-row-${i}">
+        <td>${TLBL[row.type] || row.type}</td>
+        <td>${MLBL[row.material] || row.material}</td>
+        <td>${row.coating || '—'}</td>
+        <td class="font-mono">${fmt(row.sphere)}</td>
+        <td class="font-mono">${fmt(row.cylinder)}</td>
+        <td style="text-align:center">
+          <input type="number" class="ob-qty-input" min="0" placeholder="0"
+            value="${row.qty}" oninput="OB.rows[${i}].qty=this.value" />
+        </td>
+        <td style="text-align:center">
+          <input type="number" class="ob-price-input" min="0" placeholder="—"
+            value="${row.price}" oninput="OB.rows[${i}].price=this.value" />
+        </td>
+        <td style="text-align:center">
+          <button onclick="obRemoveRow(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;line-height:1;padding:2px 4px" title="Remove">✕</button>
+        </td>
+      </tr>`).join('');
+
+    document.getElementById('ob-row-count').innerHTML =
+      `<strong>${OB.rows.length}</strong> entries ready to import. Remove any you don't need.`;
+    document.getElementById('ob-import-label').textContent =
+      `Add ${OB.rows.length} to Inventory`;
+  }
+
+  function obRemoveRow(i) {
+    OB.rows.splice(i, 1);
+    obRenderReviewTable();
+  }
+
+  async function obImport() {
+    if (!OB.rows.length) { showToast('No rows to import', 'error'); return; }
+    const btn = document.getElementById('ob-import-btn');
+    const lbl = document.getElementById('ob-import-label');
+    btn.disabled = true;
+    lbl.textContent = 'Saving…';
+
+    const clinic_id = App.clinic.id;
+    const inserts = OB.rows.map(row => ({
+      clinic_id,
+      lens_type:     row.type,
+      material:      row.material || null,
+      coating:       row.coating  || null,
+      sphere:        Number(row.sphere),
+      cylinder:      Number(row.cylinder),
+      quantity:      parseInt(row.qty)   || 0,
+      sell_price:    parseFloat(row.price) || 0,
+      restock_level: 2,
+    }));
+
+    // Insert in batches of 50 to avoid payload limits
+    let errored = 0;
+    for (let i = 0; i < inserts.length; i += 50) {
+      const batch = inserts.slice(i, i + 50);
+      const { error } = await sb.from('lenses').insert(batch);
+      if (error) { errored++; console.error('Batch error:', error); }
+    }
+
+    btn.disabled = false;
+    if (errored) {
+      showToast(`Imported with ${errored} batch error(s) — check console`, 'error');
+    } else {
+      showToast(`✓ ${inserts.length} lenses added to inventory`, 'success');
+    }
+    document.getElementById('lens-onboarding-backdrop').classList.add('hidden');
+    loadLenses();
+  }
+
+  // ═══════════════════════════════════════════════════
+
   async function loadLenses() {
     const lang    = App.clinic?.language || 'ar';
     const cid     = App.clinic?.id;
@@ -5930,7 +6195,13 @@
     applyLanguage(lang, false);
 
     if (error || !LensInv.list.length) {
-      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i data-lucide="circle-dot"></i><p>${lang === 'ar' ? 'لا توجد عدسات مضافة' : 'No lenses added yet'}</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i data-lucide="circle-dot"></i>
+        <p>${lang === 'ar' ? 'لا توجد عدسات مضافة' : 'No lenses added yet'}</p>
+        <button class="btn btn-primary btn-sm" onclick="openLensOnboarding()" style="margin-top:12px">
+          <i data-lucide="wand-2"></i>
+          ${lang === 'ar' ? 'معالج الإعداد السريع' : 'Quick Setup Wizard'}
+        </button>
+      </div></td></tr>`;
       lucide.createIcons();
       return;
     }
@@ -7880,6 +8151,18 @@
   }
 
   // ── Expose printRx globally ──────────────────────
+  window.openLensOnboarding = openLensOnboarding;
+  window.obDismiss          = obDismiss;
+  window.obGoScreen         = obGoScreen;
+  window.obStart            = obStart;
+  window.obToggleChip       = obToggleChip;
+  window.obStep1Next        = obStep1Next;
+  window.obStep2Next        = obStep2Next;
+  window.obStep3Next        = obStep3Next;
+  window.obUpdateRange      = obUpdateRange;
+  window.obRemoveRow        = obRemoveRow;
+  window.obImport           = obImport;
+
   window.printRx = printRx;
 
   // ── Expose all onclick-called functions globally ──
@@ -7924,6 +8207,165 @@
   document.addEventListener('DOMContentLoaded', init);
   </script>
 
+
+      <!-- ═══════════════════════════════════
+           LENS ONBOARDING WIZARD
+      ═══════════════════════════════════ -->
+      <div id="lens-onboarding-backdrop" class="hidden">
+        <div class="ob-wizard">
+
+          <!-- SCREEN 0: Welcome -->
+          <div id="ob-screen-welcome" class="ob-step-panel active">
+            <div class="ob-welcome">
+              <div class="ob-welcome-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/></svg>
+              </div>
+              <h2 id="ob-welcome-title">Set Up Your Lens Inventory</h2>
+              <p id="ob-welcome-desc">Let's pre-populate your inventory with the lenses you actually stock. It only takes a minute — or skip and add lenses manually.</p>
+              <div class="ob-welcome-actions">
+                <button class="btn btn-primary" onclick="obStart()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  Get Started
+                </button>
+                <button class="btn btn-secondary" onclick="obDismiss()">Start Fresh — I'll add manually</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 1: Lens Types -->
+          <div id="ob-screen-1" class="ob-step-panel">
+            <div class="ob-header">
+              <div class="ob-progress-track"><div class="ob-progress-fill" id="ob-progress" style="width:25%"></div></div>
+              <div class="ob-step-label">Step 1 of 4</div>
+              <div class="ob-title">Which lens types do you stock?</div>
+              <div class="ob-subtitle">Select all that apply.</div>
+            </div>
+            <div class="ob-body">
+              <div class="ob-chip-grid" id="ob-chips-type">
+                <button class="ob-chip selected" data-val="single" onclick="obToggleChip(this,'ob-chips-type')">Single Vision</button>
+                <button class="ob-chip selected" data-val="bifocal" onclick="obToggleChip(this,'ob-chips-type')">Bifocal</button>
+                <button class="ob-chip selected" data-val="progressive" onclick="obToggleChip(this,'ob-chips-type')">Progressive</button>
+                <button class="ob-chip" data-val="plano" onclick="obToggleChip(this,'ob-chips-type')">Plano</button>
+              </div>
+            </div>
+            <div class="ob-footer">
+              <button class="ob-skip-link" onclick="obDismiss()">Skip setup</button>
+              <div class="ob-footer-right">
+                <button class="btn btn-secondary btn-sm" onclick="obGoScreen('ob-screen-welcome')">Back</button>
+                <button class="btn btn-primary btn-sm" onclick="obStep1Next()">Next →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 2: Materials & Coatings -->
+          <div id="ob-screen-2" class="ob-step-panel">
+            <div class="ob-header">
+              <div class="ob-progress-track"><div class="ob-progress-fill" style="width:50%"></div></div>
+              <div class="ob-step-label">Step 2 of 4</div>
+              <div class="ob-title">Materials & coatings</div>
+              <div class="ob-subtitle">What materials and coatings do you carry?</div>
+            </div>
+            <div class="ob-body">
+              <div class="ob-section-label">Material</div>
+              <div class="ob-chip-grid" id="ob-chips-material">
+                <button class="ob-chip selected" data-val="plastic" onclick="obToggleChip(this,'ob-chips-material')">Plastic</button>
+                <button class="ob-chip" data-val="glass" onclick="obToggleChip(this,'ob-chips-material')">Glass</button>
+                <button class="ob-chip" data-val="contact" onclick="obToggleChip(this,'ob-chips-material')">Contact Lens</button>
+              </div>
+              <div class="ob-section-label" style="margin-top:18px">Coatings (select all you carry)</div>
+              <div class="ob-chip-grid" id="ob-chips-coating">
+                <button class="ob-chip selected" data-val="AR" onclick="obToggleChip(this,'ob-chips-coating')">Anti-Reflective (AR)</button>
+                <button class="ob-chip" data-val="Blue Cut" onclick="obToggleChip(this,'ob-chips-coating')">Blue Cut</button>
+                <button class="ob-chip" data-val="Photochromic" onclick="obToggleChip(this,'ob-chips-coating')">Photochromic</button>
+                <button class="ob-chip" data-val="UV400" onclick="obToggleChip(this,'ob-chips-coating')">UV400</button>
+                <button class="ob-chip" data-val="Hardened" onclick="obToggleChip(this,'ob-chips-coating')">Hardened</button>
+                <button class="ob-chip" data-val="Mirror" onclick="obToggleChip(this,'ob-chips-coating')">Mirror</button>
+                <button class="ob-chip" data-val="" onclick="obToggleChip(this,'ob-chips-coating')">None / Plain</button>
+              </div>
+            </div>
+            <div class="ob-footer">
+              <button class="ob-skip-link" onclick="obDismiss()">Skip setup</button>
+              <div class="ob-footer-right">
+                <button class="btn btn-secondary btn-sm" onclick="obGoScreen('ob-screen-1')">Back</button>
+                <button class="btn btn-primary btn-sm" onclick="obStep2Next()">Next →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 3: Power Range -->
+          <div id="ob-screen-3" class="ob-step-panel">
+            <div class="ob-header">
+              <div class="ob-progress-track"><div class="ob-progress-fill" style="width:75%"></div></div>
+              <div class="ob-step-label">Step 3 of 4</div>
+              <div class="ob-title">Power range you stock</div>
+              <div class="ob-subtitle">We'll generate one entry per 0.25 step within this range. You can trim the list in the next step.</div>
+            </div>
+            <div class="ob-body">
+              <div class="ob-section-label">Sphere (SPH)</div>
+              <div class="ob-range-row">
+                <label>From</label>
+                <input type="range" id="ob-sph-min" min="-20" max="0" step="0.25" value="-6" oninput="obUpdateRange()">
+                <span class="ob-range-val" id="ob-sph-min-val">-6.00</span>
+              </div>
+              <div class="ob-range-row">
+                <label>To</label>
+                <input type="range" id="ob-sph-max" min="0" max="20" step="0.25" value="+6" oninput="obUpdateRange()">
+                <span class="ob-range-val" id="ob-sph-max-val">+6.00</span>
+              </div>
+              <div class="ob-section-label" style="margin-top:16px">Cylinder (CYL) — max absolute value</div>
+              <div class="ob-range-row">
+                <label>Up to</label>
+                <input type="range" id="ob-cyl-max" min="0" max="6" step="0.25" value="2" oninput="obUpdateRange()">
+                <span class="ob-range-val" id="ob-cyl-max-val">±2.00</span>
+              </div>
+              <div class="ob-hint" id="ob-preview-count">This will generate approximately <strong>0</strong> lens entries.</div>
+            </div>
+            <div class="ob-footer">
+              <button class="ob-skip-link" onclick="obDismiss()">Skip setup</button>
+              <div class="ob-footer-right">
+                <button class="btn btn-secondary btn-sm" onclick="obGoScreen('ob-screen-2')">Back</button>
+                <button class="btn btn-primary btn-sm" onclick="obStep3Next()">Next →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 4: Review & Quantities -->
+          <div id="ob-screen-4" class="ob-step-panel">
+            <div class="ob-header">
+              <div class="ob-progress-track"><div class="ob-progress-fill" style="width:100%"></div></div>
+              <div class="ob-step-label">Step 4 of 4</div>
+              <div class="ob-title">Review & set quantities</div>
+              <div class="ob-subtitle">Optionally enter quantities and sell prices now. Leave blank to add later.</div>
+            </div>
+            <div class="ob-body">
+              <div id="ob-review-table-wrap" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                <table class="ob-qty-table">
+                  <thead><tr>
+                    <th>Type</th><th>Material</th><th>Coating</th>
+                    <th>SPH</th><th>CYL</th>
+                    <th style="text-align:center">Qty</th>
+                    <th style="text-align:center">Price (IQD)</th>
+                    <th style="text-align:center">✕</th>
+                  </tr></thead>
+                  <tbody id="ob-review-tbody"></tbody>
+                </table>
+              </div>
+              <div class="ob-hint" style="margin-top:10px" id="ob-row-count"></div>
+            </div>
+            <div class="ob-footer">
+              <button class="ob-skip-link" onclick="obGoScreen('ob-screen-3')">← Back</button>
+              <div class="ob-footer-right">
+                <button class="btn btn-secondary btn-sm" onclick="obDismiss()">Cancel</button>
+                <button class="btn btn-primary" id="ob-import-btn" onclick="obImport()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span id="ob-import-label">Add to Inventory</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
 
       <!-- ═══════════════════════════════════
            LENS MODAL
