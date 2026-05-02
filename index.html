@@ -2529,12 +2529,11 @@
                 <label class="form-label"><span class="ar">رقم الهاتف</span><span class="en" style="display:none">Phone</span></label>
                 <input type="tel" id="pt-phone" class="form-control" />
               </div>
+
               <div class="form-group">
                 <label class="form-label"><span class="ar">العمر (سنة)</span><span class="en" style="display:none">Age (years)</span></label>
                 <input type="number" id="pt-age" class="form-control" min="0" max="120" placeholder="—" />
               </div>
-              <div class="form-group">
-                <label class="form-label"><span class="ar">الجنس</span><span class="en" style="display:none">Gender</span></label>
                 <select id="pt-gender" class="form-control">
                   <option value="">—</option>
                   <option value="male"><span class="ar">ذكر</span><span class="en">Male</span></option>
@@ -4901,13 +4900,10 @@
       Patients.editingId                          = p.id;
       document.getElementById('pt-name').value    = p.full_name    || '';
       document.getElementById('pt-phone').value   = p.phone        || '';
+      document.getElementById('pt-age').value     = p.age          || '';
       document.getElementById('pt-gender').value  = p.gender       || '';
       document.getElementById('pt-address').value = p.address      || '';
       document.getElementById('pt-notes').value   = p.notes        || '';
-      // Populate age from stored age
-      if (p.age) {
-        document.getElementById('pt-age').value = p.age;
-      }
     } else {
       title.innerHTML = `<span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>`;
     }
@@ -4939,7 +4935,7 @@
       return;
     }
 
-    const ageVal    = parseInt(document.getElementById('pt-age').value)   || null;
+    const ageVal    = parseInt(document.getElementById('pt-age').value) || null;
     const genderVal = document.getElementById('pt-gender').value.trim()   || null;
 
     const payload = {
