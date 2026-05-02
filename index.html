@@ -8393,11 +8393,8 @@
 
   // ── Micro ZIP builder ────────────────────────────────
 
-  function uint8(str) {
-    const buf = new Uint8Array(str.length);
-    for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
-    return buf;
-  }
+  const _te = new TextEncoder();
+  function uint8(str) { return _te.encode(str); }
 
   function crc32(buf) {
     let c = 0xffffffff;
@@ -8427,7 +8424,7 @@
       const crc     = crc32(data);
       const local   = new Uint8Array([
         0x50,0x4b,0x03,0x04,
-        20,0, 0,0, 0,0, 0,0, 0,0,
+        20,0, 0,8, 0,0, 0,0, 0,0,
         ...u32le(crc),
         ...u32le(data.length),
         ...u32le(data.length),
@@ -8445,7 +8442,7 @@
     entries.forEach(({ name: nameBuf, crc, size, offset: off }) => {
       const cd = new Uint8Array([
         0x50,0x4b,0x01,0x02,
-        20,0, 20,0, 0,0, 0,0, 0,0, 0,0,
+        20,0, 20,0, 0,8, 0,0, 0,0, 0,0,
         ...u32le(crc),
         ...u32le(size),
         ...u32le(size),
