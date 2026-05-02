@@ -518,6 +518,19 @@
 
     .btn-warning:hover { background: rgba(240,165,0,0.2); }
 
+    /* Export button group */
+    .export-btn-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .export-btn-group .btn {
+      gap: 5px;
+      font-size: 0.8rem;
+      padding: 7px 10px;
+    }
+
     .btn-ghost {
       background: transparent;
       color: var(--text-secondary);
@@ -2655,6 +2668,14 @@
             </div>
           </div>
           <div class="page-toolbar-end">
+            <div class="export-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="exportLensesCSV()" title="Export CSV">
+                <i data-lucide="file-text"></i> CSV
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="exportLensesExcel()" title="Export Excel">
+                <i data-lucide="table-2"></i> Excel
+              </button>
+            </div>
             <button class="btn btn-secondary btn-sm" onclick="openLensOnboarding()" title="Setup wizard">
               <i data-lucide="wand-2"></i>
               <span class="ar">معالج الإعداد</span><span class="en" style="display:none">Setup Wizard</span>
@@ -2709,6 +2730,14 @@
             </select>
           </div>
           <div class="page-toolbar-end">
+            <div class="export-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="exportFramesCSV()" title="Export CSV">
+                <i data-lucide="file-text"></i> CSV
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="exportFramesExcel()" title="Export Excel">
+                <i data-lucide="table-2"></i> Excel
+              </button>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="openFrameModal()">
               <i data-lucide="plus"></i>
               <span class="ar">إطار جديد</span><span class="en" style="display:none">Add Frame</span>
@@ -2809,8 +2838,19 @@
               <option value=""><span class="ar">كل الطرق</span></option>
               <option value="cash"><span class="ar">نقداً</span></option>
               <option value="card"><span class="ar">بطاقة</span></option>
-              
             </select>
+          </div>
+          <div class="page-toolbar-end">
+            <div class="export-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="exportLedgerCSV()" title="Export CSV">
+                <i data-lucide="file-text"></i>
+                <span class="ar">CSV</span><span class="en" style="display:none">CSV</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="exportLedgerExcel()" title="Export Excel">
+                <i data-lucide="table-2"></i>
+                <span class="ar">Excel</span><span class="en" style="display:none">Excel</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="patients-stats" id="ledger-stats"></div>
@@ -2842,6 +2882,16 @@
               <option value="partial"><span class="ar">مدفوع جزئياً</span></option>
             </select>
           </div>
+          <div class="page-toolbar-end">
+            <div class="export-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="exportDebtorsCSV()" title="Export CSV">
+                <i data-lucide="file-text"></i> CSV
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="exportDebtorsExcel()" title="Export Excel">
+                <i data-lucide="table-2"></i> Excel
+              </button>
+            </div>
+          </div>
         </div>
         <div class="patients-stats" id="debtors-stats"></div>
         <div class="table-wrap">
@@ -2870,6 +2920,16 @@
               <option value="90"><span class="ar">آخر 3 أشهر</span></option>
               <option value="365"><span class="ar">هذه السنة</span></option>
             </select>
+          </div>
+          <div class="page-toolbar-end">
+            <div class="export-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="exportReportsCSV()" title="Export revenue CSV">
+                <i data-lucide="file-text"></i> CSV
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="exportReportsExcel()" title="Export Excel workbook">
+                <i data-lucide="table-2"></i> Excel
+              </button>
+            </div>
           </div>
         </div>
         <div class="grid-4" id="reports-kpis" style="margin-bottom:20px"></div>
@@ -8261,7 +8321,636 @@
 
   window.printRx = printRx;
 
-  // ── Expose all onclick-called functions globally ──
+  // ═══════════════════════════════════════════════════
+  // CHUNK 14 — EXCEL / CSV EXPORT ENGINE
+  // ═══════════════════════════════════════════════════
+
+  // ── Core helpers ────────────────────────────────────
+
+  /** Escape a value for CSV: wrap in quotes, escape internal quotes */
+  function csvCell(val) {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  /** Build a CSV string from an array of row-arrays */
+  function buildCSV(rows) {
+    return rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  }
+
+  /** Trigger a browser download */
+  function triggerDownload(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Download a CSV */
+  function downloadCSV(rows, filename) {
+    // Prepend UTF-8 BOM so Excel opens Arabic correctly
+    triggerDownload('\uFEFF' + buildCSV(rows), filename + '.csv', 'text/csv;charset=utf-8;');
+    showToast('CSV exported', 'success');
+  }
+
+  // ── Minimal XLSX writer (no library needed) ──────────
+  // Generates a valid .xlsx file using only vanilla JS + zip.
+  // We embed a micro zip-builder and OOXML templates.
+
+  function uint8(str) {
+    return new TextEncoder().encode(str);
+  }
+
+  function crc32(data) {
+    const table = crc32.table || (() => {
+      const t = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+        t[i] = c;
+      }
+      return (crc32.table = t);
+    })();
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function deflateRaw(data) {
+    // Use CompressionStream if available (Chrome 80+, Firefox 113+), else store uncompressed
+    return new Promise(async (resolve) => {
+      try {
+        const cs = new CompressionStream('deflate-raw');
+        const writer = cs.writable.getWriter();
+        writer.write(data);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        const total = chunks.reduce((s, c) => s + c.length, 0);
+        const out = new Uint8Array(total);
+        let off = 0;
+        for (const c of chunks) { out.set(c, off); off += c.length; }
+        resolve({ data: out, method: 8 });
+      } catch {
+        resolve({ data, method: 0 }); // store uncompressed on failure
+      }
+    });
+  }
+
+  function le16(n) { return [n & 0xFF, (n >> 8) & 0xFF]; }
+  function le32(n) { return [n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF]; }
+
+  async function buildZip(files) {
+    // files = [{name, data: Uint8Array}]
+    const localHeaders = [];
+    const centralDirs  = [];
+    let offset = 0;
+
+    for (const file of files) {
+      const nameBytes = uint8(file.name);
+      const rawData   = file.data;
+      const { data: compData, method } = await deflateRaw(rawData);
+      const crc  = crc32(rawData);
+      const lh   = new Uint8Array([
+        0x50, 0x4B, 0x03, 0x04,        // local file header sig
+        0x14, 0x00,                    // version needed
+        0x00, 0x00,                    // general purpose bit flag
+        ...le16(method),               // compression method
+        0x00, 0x00, 0x00, 0x00,        // last mod time/date (zero)
+        ...le32(crc),                  // CRC-32
+        ...le32(compData.length),      // compressed size
+        ...le32(rawData.length),       // uncompressed size
+        ...le16(nameBytes.length),     // file name length
+        0x00, 0x00,                    // extra field length
+        ...nameBytes,
+        ...compData,
+      ]);
+      localHeaders.push(lh);
+
+      const cd = new Uint8Array([
+        0x50, 0x4B, 0x01, 0x02,        // central dir sig
+        0x14, 0x00,                    // version made by
+        0x14, 0x00,                    // version needed
+        0x00, 0x00,                    // general purpose
+        ...le16(method),
+        0x00, 0x00, 0x00, 0x00,        // last mod
+        ...le32(crc),
+        ...le32(compData.length),
+        ...le32(rawData.length),
+        ...le16(nameBytes.length),
+        0x00, 0x00,                    // extra length
+        0x00, 0x00,                    // comment length
+        0x00, 0x00,                    // disk start
+        0x00, 0x00,                    // internal attribs
+        0x00, 0x00, 0x00, 0x00,        // external attribs
+        ...le32(offset),               // relative offset of local header
+        ...nameBytes,
+      ]);
+      centralDirs.push(cd);
+      offset += lh.length;
+    }
+
+    const cdSize   = centralDirs.reduce((s, c) => s + c.length, 0);
+    const eocd = new Uint8Array([
+      0x50, 0x4B, 0x05, 0x06,          // end of central dir sig
+      0x00, 0x00,                      // disk number
+      0x00, 0x00,                      // disk with start of CD
+      ...le16(files.length),           // entries on this disk
+      ...le16(files.length),           // total entries
+      ...le32(cdSize),                 // size of CD
+      ...le32(offset),                 // offset of CD
+      0x00, 0x00,                      // comment length
+    ]);
+
+    const parts = [...localHeaders, ...centralDirs, eocd];
+    const totalLen = parts.reduce((s, p) => s + p.length, 0);
+    const out = new Uint8Array(totalLen);
+    let pos = 0;
+    for (const p of parts) { out.set(p, pos); pos += p.length; }
+    return out;
+  }
+
+  // ── OOXML helpers ────────────────────────────────────
+
+  function xlsxEscape(v) {
+    if (v === null || v === undefined) return '';
+    return String(v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  // Shared strings table builder
+  class SharedStrings {
+    constructor() { this.map = new Map(); this.list = []; }
+    idx(val) {
+      const s = String(val ?? '');
+      if (this.map.has(s)) return this.map.get(s);
+      const i = this.list.length;
+      this.list.push(s);
+      this.map.set(s, i);
+      return i;
+    }
+    xml() {
+      const items = this.list.map(s =>
+        `<si><t xml:space="preserve">${xlsxEscape(s)}</t></si>`
+      ).join('');
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${this.list.length}" uniqueCount="${this.list.length}">${items}</sst>`;
+    }
+  }
+
+  function colLetter(n) { // 1-based → A, B, ... Z, AA ...
+    let s = '';
+    while (n > 0) { s = String.fromCharCode(65 + ((n - 1) % 26)) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+
+  /**
+   * Build a single worksheet XML.
+   * rows: array of arrays; first row treated as header (bold via styleIndex=1).
+   * numCols: set of 0-based column indices that are numeric.
+   */
+  function buildSheetXML(rows, ss, numCols = new Set(), dateCols = new Set()) {
+    if (!rows.length) return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>`;
+
+    const colCount = rows[0].length;
+    // Auto-widths
+    const widths = Array(colCount).fill(10);
+    rows.forEach(r => r.forEach((v, ci) => {
+      const len = String(v ?? '').length;
+      if (len + 2 > widths[ci]) widths[ci] = Math.min(len + 2, 40);
+    }));
+
+    const cols = widths.map((w, i) =>
+      `<col min="${i+1}" max="${i+1}" width="${w}" bestFit="1" customWidth="1"/>`
+    ).join('');
+
+    const sheetRows = rows.map((row, ri) => {
+      const cells = row.map((val, ci) => {
+        const addr = `${colLetter(ci + 1)}${ri + 1}`;
+        const isHeader = ri === 0;
+        const style = isHeader ? ' s="1"' : (numCols.has(ci) ? ' s="2"' : dateCols.has(ci) ? ' s="3"' : '');
+
+        if (val === null || val === undefined || val === '') {
+          return `<c r="${addr}"${style}/>`;
+        }
+        if (!isHeader && numCols.has(ci)) {
+          const n = Number(String(val).replace(/[^0-9.\-]/g, ''));
+          if (!isNaN(n)) return `<c r="${addr}" t="n"${style}><v>${n}</v></c>`;
+        }
+        // String cell via shared strings
+        const si = ss.idx(val);
+        return `<c r="${addr}" t="s"${style}><v>${si}</v></c>`;
+      }).join('');
+      return `<row r="${ri + 1}">${cells}</row>`;
+    }).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <cols>${cols}</cols>
+  <sheetData>${sheetRows}</sheetData>
+</worksheet>`;
+  }
+
+  /**
+   * Build a complete .xlsx from an array of sheets.
+   * sheets: [{name, rows, numCols?, dateCols?}]
+   */
+  async function buildXLSX(sheets) {
+    const ss = new SharedStrings();
+
+    // Pre-pass: register all strings
+    const sheetXMLs = sheets.map(s =>
+      buildSheetXML(s.rows, ss, s.numCols || new Set(), s.dateCols || new Set())
+    );
+
+    const files = [];
+
+    // [Content_Types].xml
+    const sheetParts = sheets.map((_, i) =>
+      `<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+    ).join('');
+    files.push({ name: '[Content_Types].xml', data: uint8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${sheetParts}
+</Types>`)
+    });
+
+    // _rels/.rels
+    files.push({ name: '_rels/.rels', data: uint8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`)
+    });
+
+    // xl/workbook.xml
+    const sheetEls = sheets.map((s, i) =>
+      `<sheet name="${xlsxEscape(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`
+    ).join('');
+    files.push({ name: 'xl/workbook.xml', data: uint8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>${sheetEls}</sheets>
+</workbook>`)
+    });
+
+    // xl/_rels/workbook.xml.rels
+    const sheetRels = sheets.map((_, i) =>
+      `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`
+    ).join('');
+    files.push({ name: 'xl/_rels/workbook.xml.rels', data: uint8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${sheetRels}
+  <Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+  <Relationship Id="rId${sheets.length+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`)
+    });
+
+    // xl/styles.xml — 3 styles: 0=default, 1=bold header, 2=number, 3=date
+    files.push({ name: 'xl/styles.xml', data: uint8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1A65E8"/></patternFill></fill>
+  </fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="4">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+    <xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+    <xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+  </cellXfs>
+</styleSheet>`)
+    });
+
+    // xl/sharedStrings.xml
+    files.push({ name: 'xl/sharedStrings.xml', data: uint8(ss.xml()) });
+
+    // worksheets
+    sheetXMLs.forEach((xml, i) => {
+      files.push({ name: `xl/worksheets/sheet${i+1}.xml`, data: uint8(xml) });
+    });
+
+    return buildZip(files);
+  }
+
+  async function downloadXLSX(sheets, filename) {
+    const data = await buildXLSX(sheets);
+    triggerDownload(data, filename + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    showToast('Excel file exported', 'success');
+  }
+
+  // ── Per-page export functions ────────────────────────
+
+  // LEDGER
+  function getLedgerRows() {
+    const lang = App.clinic?.language || 'ar';
+    const tbody = document.getElementById('ledger-tbody');
+    const header = ['Date', 'Patient', 'Amount (IQD)', 'Method', 'Notes'];
+    const rows = [header];
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 5) return;
+      rows.push([
+        tds[0].textContent.trim(),
+        tds[1].textContent.trim(),
+        tds[2].textContent.trim().replace(/[^\d.-]/g, ''),
+        tds[3].textContent.trim(),
+        tds[4].textContent.trim(),
+      ]);
+    });
+    return rows;
+  }
+
+  function exportLedgerCSV() {
+    const from = document.getElementById('ledger-from')?.value || '';
+    const to   = document.getElementById('ledger-to')?.value   || '';
+    downloadCSV(getLedgerRows(), `ledger_${from}_${to}`);
+  }
+
+  async function exportLedgerExcel() {
+    const from = document.getElementById('ledger-from')?.value || '';
+    const to   = document.getElementById('ledger-to')?.value   || '';
+    const rows = getLedgerRows();
+    await downloadXLSX([{
+      name: 'Daily Ledger',
+      rows,
+      numCols: new Set([2]),
+    }], `ledger_${from}_${to}`);
+  }
+
+  // DEBTORS
+  function getDebtorsRows() {
+    const tbody = document.getElementById('debtors-tbody');
+    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
+    const rows = [header];
+    // Use LensInv pattern — pull from Supabase cache via DOM
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 6) return;
+      rows.push([
+        tds[0].textContent.trim(),
+        tds[1].textContent.trim().replace(/[^\d.-]/g, ''),
+        tds[2].textContent.trim().replace(/[^\d.-]/g, ''),
+        tds[3].textContent.trim().replace(/[^\d.-]/g, ''),
+        tds[4].textContent.trim(),
+        tds[5].textContent.trim(),
+      ]);
+    });
+    return rows;
+  }
+
+  async function _fetchDebtorsForExport() {
+    const cid    = App.clinic?.id;
+    const filter = document.getElementById('debtors-filter')?.value || 'all';
+    const { data } = await sb.from('orders')
+      .select('id, total, paid, remaining, payment_status, order_date, patient_id, patients(full_name, phone)')
+      .eq('clinic_id', cid)
+      .in('payment_status', filter === 'all' ? ['unpaid','partial'] : [filter])
+      .order('order_date', { ascending: false });
+    return (data || []).map(r => [
+      r.patients?.full_name || '',
+      r.patients?.phone || '',
+      r.total || 0,
+      r.paid || 0,
+      r.remaining || 0,
+      r.payment_status,
+      r.order_date || '',
+    ]);
+  }
+
+  function exportDebtorsCSV() {
+    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
+    _fetchDebtorsForExport().then(dataRows => {
+      downloadCSV([header, ...dataRows], `debtors_${todayISO()}`);
+    });
+  }
+
+  async function exportDebtorsExcel() {
+    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
+    const dataRows = await _fetchDebtorsForExport();
+    await downloadXLSX([{
+      name: 'Debtors',
+      rows: [header, ...dataRows],
+      numCols: new Set([2, 3, 4]),
+    }], `debtors_${todayISO()}`);
+  }
+
+  // LENS INVENTORY
+  async function _fetchLensesForExport() {
+    const cid        = App.clinic?.id;
+    const typeFilter = document.getElementById('lenses-filter-type')?.value || '';
+    const search     = document.getElementById('lenses-search')?.value?.trim() || '';
+    const sphFilter  = document.getElementById('lenses-filter-sph')?.value?.trim() || '';
+    const cylFilter  = document.getElementById('lenses-filter-cyl')?.value?.trim() || '';
+    const MATERIAL_LABELS = { plastic: 'Plastic', glass: 'Glass', contact: 'Contact Lens' };
+
+    let q = sb.from('lenses').select('*').eq('clinic_id', cid).order('sphere').order('cylinder');
+    if (typeFilter) q = q.eq('lens_type', typeFilter);
+    if (search)     q = q.or(`brand.ilike.%${search}%,material.ilike.%${search}%,coating.ilike.%${search}%`);
+    if (sphFilter !== '') { const v = parseFloat(sphFilter); if (!isNaN(v)) q = q.gte('sphere', v - 0.001).lte('sphere', v + 0.001); }
+    if (cylFilter !== '') { const v = parseFloat(cylFilter); if (!isNaN(v)) q = q.gte('cylinder', v - 0.001).lte('cylinder', v + 0.001); }
+
+    const { data } = await q;
+    return (data || []).map(l => [
+      LENS_TYPE_LABELS[l.lens_type] || l.lens_type || '',
+      MATERIAL_LABELS[l.material]  || l.material  || '',
+      l.coating    || '',
+      l.sphere     ?? '',
+      l.cylinder   ?? 0,
+      l.quantity   ?? 0,
+      l.restock_level ?? 2,
+      l.sell_price ?? 0,
+      l.cost_price ?? 0,
+      l.notes      || '',
+    ]);
+  }
+
+  function exportLensesCSV() {
+    const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
+    _fetchLensesForExport().then(rows => downloadCSV([header, ...rows], `lens_inventory_${todayISO()}`));
+  }
+
+  async function exportLensesExcel() {
+    const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
+    const rows   = await _fetchLensesForExport();
+    await downloadXLSX([{
+      name: 'Lens Inventory',
+      rows: [header, ...rows],
+      numCols: new Set([3, 4, 5, 6, 7, 8]),
+    }], `lens_inventory_${todayISO()}`);
+  }
+
+  // FRAME INVENTORY
+  async function _fetchFramesForExport() {
+    const cid        = App.clinic?.id;
+    const typeFilter = document.getElementById('frames-filter-type')?.value || '';
+    const search     = document.getElementById('frames-search')?.value?.trim() || '';
+    const FRAME_MATERIAL_LABELS = { metal: 'Metal', plastic: 'Plastic', titanium: 'Titanium' };
+    const FRAME_TYPE_LABELS = { full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless', sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport' };
+
+    let q = sb.from('frames').select('*').eq('clinic_id', cid).order('brand');
+    if (typeFilter) q = q.eq('frame_type', typeFilter);
+    if (search)     q = q.or(`brand.ilike.%${search}%,model.ilike.%${search}%,color.ilike.%${search}%`);
+
+    const { data } = await q;
+    return (data || []).map(f => [
+      f.brand        || '',
+      f.model        || '',
+      FRAME_TYPE_LABELS[f.frame_type]         || f.frame_type     || '',
+      FRAME_MATERIAL_LABELS[f.material]       || f.material       || '',
+      f.color        || '',
+      f.size         || '',
+      f.quantity     ?? 0,
+      f.restock_level ?? 1,
+      f.sell_price   ?? 0,
+      f.cost_price   ?? 0,
+      f.notes        || '',
+    ]);
+  }
+
+  function exportFramesCSV() {
+    const header = ['Brand', 'Model', 'Type', 'Material', 'Color', 'Size', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
+    _fetchFramesForExport().then(rows => downloadCSV([header, ...rows], `frame_inventory_${todayISO()}`));
+  }
+
+  async function exportFramesExcel() {
+    const header = ['Brand', 'Model', 'Type', 'Material', 'Color', 'Size', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
+    const rows   = await _fetchFramesForExport();
+    await downloadXLSX([{
+      name: 'Frame Inventory',
+      rows: [header, ...rows],
+      numCols: new Set([6, 7, 8, 9]),
+    }], `frame_inventory_${todayISO()}`);
+  }
+
+  // REPORTS — multi-sheet workbook: Revenue + Payments + Top Frames + Top Lenses
+  async function _fetchReportsForExport() {
+    const cid  = App.clinic?.id;
+    const days = parseInt(document.getElementById('reports-period')?.value || '30');
+    const from = daysAgoISO(days);
+    const to   = todayISO();
+
+    const [pmtsRes, rxRes, debtRes, topFRes, topLRes] = await Promise.all([
+      sb.from('payments')
+        .select('payment_date, amount, payment_method, patients(full_name)')
+        .eq('clinic_id', cid).gte('payment_date', from).lte('payment_date', to)
+        .order('payment_date'),
+      sb.from('prescriptions')
+        .select('exam_date, od_sph, od_cyl, os_sph, os_cyl, lens_type, patients(full_name)')
+        .eq('clinic_id', cid).gte('exam_date', from).lte('exam_date', to)
+        .order('exam_date', { ascending: false }),
+      sb.from('orders')
+        .select('remaining, payment_status, order_date, patients(full_name, phone)')
+        .eq('clinic_id', cid).in('payment_status', ['unpaid','partial']),
+      sb.from('orders')
+        .select('frame_id, frames!orders_frame_id_fkey(brand, model)')
+        .eq('clinic_id', cid).not('frame_id', 'is', null).gte('order_date', from),
+      sb.from('orders')
+        .select('lens_id, lenses!orders_lens_id_fkey(lens_type, material)')
+        .eq('clinic_id', cid).not('lens_id', 'is', null).gte('order_date', from),
+    ]);
+
+    // Sheet 1: Payments
+    const pmtHeader = ['Date', 'Patient', 'Amount (IQD)', 'Method'];
+    const pmtRows = (pmtsRes.data || []).map(p => [
+      p.payment_date, p.patients?.full_name || '', p.amount || 0, p.payment_method || '',
+    ]);
+
+    // Sheet 2: Prescriptions
+    const rxHeader = ['Date', 'Patient', 'OD SPH', 'OD CYL', 'OS SPH', 'OS CYL', 'Lens Type'];
+    const rxRows = (rxRes.data || []).map(r => [
+      r.exam_date, r.patients?.full_name || '',
+      r.od_sph ?? '', r.od_cyl ?? '', r.os_sph ?? '', r.os_cyl ?? '',
+      LENS_TYPE_LABELS[r.lens_type] || r.lens_type || '',
+    ]);
+
+    // Sheet 3: Outstanding Debts
+    const debtHeader = ['Patient', 'Phone', 'Remaining (IQD)', 'Status', 'Date'];
+    const debtRows = (debtRes.data || []).map(o => [
+      o.patients?.full_name || '', o.patients?.phone || '',
+      o.remaining || 0, o.payment_status || '', o.order_date || '',
+    ]);
+
+    // Sheet 4: Top Frames
+    const frameCounts = {};
+    (topFRes.data || []).forEach(o => {
+      const k = o.frame_id;
+      const n = [o.frames?.brand, o.frames?.model].filter(Boolean).join(' ') || '—';
+      frameCounts[k] = { name: n, count: (frameCounts[k]?.count || 0) + 1 };
+    });
+    const topFrameHeader = ['Frame', 'Orders'];
+    const topFrameRows = Object.values(frameCounts).sort((a,b) => b.count - a.count)
+      .map(f => [f.name, f.count]);
+
+    // Sheet 5: Top Lenses
+    const lensCounts = {};
+    (topLRes.data || []).forEach(o => {
+      const k = o.lens_id;
+      const n = [LENS_TYPE_LABELS[o.lenses?.lens_type]||o.lenses?.lens_type, o.lenses?.material].filter(Boolean).join(' · ') || '—';
+      lensCounts[k] = { name: n, count: (lensCounts[k]?.count || 0) + 1 };
+    });
+    const topLensHeader = ['Lens', 'Orders'];
+    const topLensRows = Object.values(lensCounts).sort((a,b) => b.count - a.count)
+      .map(l => [l.name, l.count]);
+
+    return { pmtHeader, pmtRows, rxHeader, rxRows, debtHeader, debtRows, topFrameHeader, topFrameRows, topLensHeader, topLensRows };
+  }
+
+  function exportReportsCSV() {
+    _fetchReportsForExport().then(d => {
+      downloadCSV([d.pmtHeader, ...d.pmtRows], `payments_${todayISO()}`);
+    });
+  }
+
+  async function exportReportsExcel() {
+    const d = await _fetchReportsForExport();
+    const days = document.getElementById('reports-period')?.value || '30';
+    await downloadXLSX([
+      { name: 'Payments',          rows: [d.pmtHeader,      ...d.pmtRows],      numCols: new Set([2]) },
+      { name: 'Prescriptions',     rows: [d.rxHeader,       ...d.rxRows],       numCols: new Set([2,3,4,5]) },
+      { name: 'Outstanding Debts', rows: [d.debtHeader,     ...d.debtRows],     numCols: new Set([2]) },
+      { name: 'Top Frames',        rows: [d.topFrameHeader, ...d.topFrameRows], numCols: new Set([1]) },
+      { name: 'Top Lenses',        rows: [d.topLensHeader,  ...d.topLensRows],  numCols: new Set([1]) },
+    ], `noor_report_${days}d_${todayISO()}`);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // END CHUNK 14
+  // ═══════════════════════════════════════════════════
+
+
   window.selectLens        = selectLensForEye; // keep legacy name
   window.selectLensForEye  = selectLensForEye;
   window.updateLensPrice   = updateLensPrice;
@@ -8283,6 +8972,16 @@
   window.deleteLens        = deleteLens;
   window.clearAllLenses    = clearAllLenses;
   window.openLensRestockModal = openLensRestockModal;
+  window.exportLedgerCSV   = exportLedgerCSV;
+  window.exportLedgerExcel = exportLedgerExcel;
+  window.exportDebtorsCSV  = exportDebtorsCSV;
+  window.exportDebtorsExcel= exportDebtorsExcel;
+  window.exportLensesCSV   = exportLensesCSV;
+  window.exportLensesExcel = exportLensesExcel;
+  window.exportFramesCSV   = exportFramesCSV;
+  window.exportFramesExcel = exportFramesExcel;
+  window.exportReportsCSV  = exportReportsCSV;
+  window.exportReportsExcel= exportReportsExcel;
   window.duplicateLens     = duplicateLens;
   window.closeLensModal    = closeLensModal;
   window.saveFrame         = saveFrame;
