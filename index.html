@@ -2473,6 +2473,14 @@
             </div>
           </div>
           <div class="page-toolbar-end">
+            <button class="btn btn-ghost btn-sm" onclick="exportPatientsCSV()" title="Export CSV">
+              <i data-lucide="file-text"></i>
+              <span class="ar">CSV</span><span class="en" style="display:none">CSV</span>
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="exportPatientsExcel()" title="Export Excel" style="color:var(--success)">
+              <i data-lucide="table-2"></i>
+              <span class="ar">Excel</span><span class="en" style="display:none">Excel</span>
+            </button>
             <button class="btn btn-primary btn-sm" onclick="openPatientModal()">
               <i data-lucide="user-plus"></i>
               <span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>
@@ -2521,13 +2529,32 @@
                 <label class="form-label"><span class="ar">رقم الهاتف</span><span class="en" style="display:none">Phone</span></label>
                 <input type="tel" id="pt-phone" class="form-control" />
               </div>
-              <div class="form-group" style="grid-column:1/-1">
+              <div class="form-group">
+                <label class="form-label"><span class="ar">تاريخ الميلاد</span><span class="en" style="display:none">Date of Birth</span></label>
+                <input type="date" id="pt-dob" class="form-control" onchange="updatePatientAge()" />
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">العمر (سنة)</span><span class="en" style="display:none">Age (years)</span></label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="number" id="pt-age" class="form-control" min="0" max="120" placeholder="—" style="flex:1" onchange="updatePatientDobFromAge()" />
+                  <span id="pt-age-display" style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;min-width:60px"></span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span class="ar">الجنس</span><span class="en" style="display:none">Gender</span></label>
+                <select id="pt-gender" class="form-control">
+                  <option value="">—</option>
+                  <option value="male"><span class="ar">ذكر</span><span class="en">Male</span></option>
+                  <option value="female"><span class="ar">أنثى</span><span class="en">Female</span></option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label class="form-label"><span class="ar">العنوان</span><span class="en" style="display:none">Address</span></label>
                 <input type="text" id="pt-address" class="form-control" />
               </div>
               <div class="form-group" style="grid-column:1/-1">
                 <label class="form-label"><span class="ar">ملاحظات</span><span class="en" style="display:none">Notes</span></label>
-                <textarea id="pt-notes" class="form-control" rows="3" style="resize:vertical"></textarea>
+                <textarea id="pt-notes" class="form-control" rows="2" style="resize:vertical"></textarea>
               </div>
             </div>
             <div id="patient-form-error" class="form-error hidden" style="margin-top:8px"></div>
@@ -4488,7 +4515,7 @@
 
     let query = sb.from('patients')
       .select(`
-        id, full_name, phone, created_at,
+        id, full_name, phone, date_of_birth, age, gender, address, notes, created_at,
         prescriptions!prescriptions_patient_id_fkey(
           exam_date, next_visit_date, checkup,
           orders(total, paid, remaining, payment_status)
@@ -4542,6 +4569,8 @@
 
     tbody.innerHTML = Patients.list.map(p => {
       const initials = p.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      const ageDisplay = p.date_of_birth ? calcAge(p.date_of_birth) : (p.age || null);
+      const genderDot  = p.gender === 'male' ? `<span class="gender-dot male"></span>` : p.gender === 'female' ? `<span class="gender-dot female"></span>` : '';
 
       // Sort prescriptions by exam_date desc → newest first
       const rxs = (p.prescriptions || []).sort((a,b) => (b.exam_date||'') > (a.exam_date||'') ? 1 : -1);
@@ -4569,8 +4598,8 @@
             <div style="display:flex;align-items:center;gap:10px">
               <div class="patient-avatar">${initials}</div>
               <div>
-                <div style="font-weight:500">${p.full_name}</div>
-                <div style="font-size:0.75rem;color:var(--text-muted)">${p.phone || ''}</div>
+                <div style="font-weight:500">${genderDot}${p.full_name}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted)">${p.phone || ''}${ageDisplay ? (p.phone ? ' · ' : '') + ageDisplay + ' yr' : ''}</div>
               </div>
             </div>
           </td>
@@ -4823,6 +4852,36 @@
     Debtors._ledgerPatientId = null;
   }
 
+  // ── Patient age helpers ─────────────────────────
+  function calcAge(dob) {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return Math.max(0, age);
+  }
+
+  function updatePatientAge() {
+    const dob = document.getElementById('pt-dob').value;
+    if (!dob) return;
+    const age = calcAge(dob);
+    document.getElementById('pt-age').value = age;
+    document.getElementById('pt-age-display').textContent = age + ' yr';
+  }
+
+  function updatePatientDobFromAge() {
+    const age = parseInt(document.getElementById('pt-age').value);
+    if (isNaN(age) || age < 0) return;
+    document.getElementById('pt-age-display').textContent = age + ' yr';
+    // Only auto-fill DOB if not already set
+    if (!document.getElementById('pt-dob').value) {
+      const year = new Date().getFullYear() - age;
+      document.getElementById('pt-dob').value = `${year}-01-01`;
+    }
+  }
+
   // ── Search ──────────────────────────────────────
   function debouncePatientSearch(val) {
     clearTimeout(Patients.searchTimer);
@@ -4844,8 +4903,12 @@
     // Reset form
     document.getElementById('pt-name').value    = '';
     document.getElementById('pt-phone').value   = '';
+    document.getElementById('pt-dob').value     = '';
+    document.getElementById('pt-age').value     = '';
+    document.getElementById('pt-gender').value  = '';
     document.getElementById('pt-address').value = '';
     document.getElementById('pt-notes').value   = '';
+    document.getElementById('pt-age-display').textContent = '';
     errEl.classList.add('hidden');
     Patients.editingId = null;
     delBtn.style.display = 'none';
@@ -4866,8 +4929,19 @@
       Patients.editingId                          = p.id;
       document.getElementById('pt-name').value    = p.full_name    || '';
       document.getElementById('pt-phone').value   = p.phone        || '';
+      document.getElementById('pt-dob').value     = p.date_of_birth || '';
+      document.getElementById('pt-gender').value  = p.gender       || '';
       document.getElementById('pt-address').value = p.address      || '';
       document.getElementById('pt-notes').value   = p.notes        || '';
+      // Populate age from DOB or stored age
+      if (p.date_of_birth) {
+        const age = calcAge(p.date_of_birth);
+        document.getElementById('pt-age').value = age;
+        document.getElementById('pt-age-display').textContent = age + ' yr';
+      } else if (p.age) {
+        document.getElementById('pt-age').value = p.age;
+        document.getElementById('pt-age-display').textContent = p.age + ' yr';
+      }
     } else {
       title.innerHTML = `<span class="ar">مريض جديد</span><span class="en" style="display:none">New Patient</span>`;
     }
@@ -4899,13 +4973,20 @@
       return;
     }
 
+    const dobVal    = document.getElementById('pt-dob').value.trim()     || null;
+    const ageVal    = parseInt(document.getElementById('pt-age').value)   || null;
+    const genderVal = document.getElementById('pt-gender').value.trim()   || null;
+
     const payload = {
-      clinic_id:  App.clinic.id,
-      full_name:  name,
-      phone:      document.getElementById('pt-phone').value.trim()   || null,
-      address:    document.getElementById('pt-address').value.trim() || null,
-      notes:      document.getElementById('pt-notes').value.trim()   || null,
-      created_by: App.clinicUser.id,
+      clinic_id:     App.clinic.id,
+      full_name:     name,
+      phone:         document.getElementById('pt-phone').value.trim()   || null,
+      date_of_birth: dobVal,
+      age:           dobVal ? calcAge(dobVal) : ageVal,
+      gender:        genderVal,
+      address:       document.getElementById('pt-address').value.trim() || null,
+      notes:         document.getElementById('pt-notes').value.trim()   || null,
+      created_by:    App.clinicUser.id,
     };
 
     setButtonLoading(btn, true);
@@ -8322,262 +8403,345 @@
   window.printRx = printRx;
 
   // ═══════════════════════════════════════════════════
-  // CHUNK 14 — EXCEL / CSV EXPORT ENGINE
+  // CHUNK 14 — EXCEL / CSV EXPORT ENGINE (v2 — Rich)
+  // Full OOXML xlsx with: bold headers, colored fills,
+  // column auto-width, number formats, embedded bar charts,
+  // pie charts, and comprehensive patient demographics.
   // ═══════════════════════════════════════════════════
 
   // ── Core helpers ────────────────────────────────────
 
-  /** Escape a value for CSV: wrap in quotes, escape internal quotes */
   function csvCell(val) {
     if (val === null || val === undefined) return '';
     const s = String(val);
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    if (s.includes(',') || s.includes('"') || s.includes('\n'))
       return '"' + s.replace(/"/g, '""') + '"';
-    }
     return s;
   }
-
-  /** Build a CSV string from an array of row-arrays */
-  function buildCSV(rows) {
-    return rows.map(r => r.map(csvCell).join(',')).join('\r\n');
-  }
-
-  /** Trigger a browser download */
+  function buildCSV(rows) { return rows.map(r => r.map(csvCell).join(',')).join('\r\n'); }
   function triggerDownload(content, filename, mime) {
-    const blob = new Blob([content], { type: mime });
+    const blob = new Blob([typeof content === 'string' ? [content] : [content]], { type: mime });
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   }
-
-  /** Download a CSV */
   function downloadCSV(rows, filename) {
-    // Prepend UTF-8 BOM so Excel opens Arabic correctly
     triggerDownload('\uFEFF' + buildCSV(rows), filename + '.csv', 'text/csv;charset=utf-8;');
     showToast('CSV exported', 'success');
   }
 
-  // ── Minimal XLSX writer (no library needed) ──────────
-  // Generates a valid .xlsx file using only vanilla JS + zip.
-  // We embed a micro zip-builder and OOXML templates.
+  // ── Micro ZIP builder ────────────────────────────────
 
   function uint8(str) {
-    return new TextEncoder().encode(str);
+    const buf = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
+    return buf;
   }
 
-  function crc32(data) {
-    const table = crc32.table || (() => {
+  function crc32(buf) {
+    let c = 0xffffffff;
+    const table = crc32.t || (crc32.t = (() => {
       const t = new Uint32Array(256);
-      for (let i = 0; i < 256; i++) {
-        let c = i;
-        for (let j = 0; j < 8; j++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-        t[i] = c;
+      for (let n = 0; n < 256; n++) {
+        let k = n;
+        for (let j = 0; j < 8; j++) k = (k & 1) ? (0xedb88320 ^ (k >>> 1)) : (k >>> 1);
+        t[n] = k;
       }
-      return (crc32.table = t);
-    })();
-    let crc = 0xFFFFFFFF;
-    for (let i = 0; i < data.length; i++) crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
-    return (crc ^ 0xFFFFFFFF) >>> 0;
+      return t;
+    })());
+    for (let i = 0; i < buf.length; i++) c = table[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
   }
 
-  function deflateRaw(data) {
-    // Use CompressionStream if available (Chrome 80+, Firefox 113+), else store uncompressed
-    return new Promise(async (resolve) => {
-      try {
-        const cs = new CompressionStream('deflate-raw');
-        const writer = cs.writable.getWriter();
-        writer.write(data);
-        writer.close();
-        const chunks = [];
-        const reader = cs.readable.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-        }
-        const total = chunks.reduce((s, c) => s + c.length, 0);
-        const out = new Uint8Array(total);
-        let off = 0;
-        for (const c of chunks) { out.set(c, off); off += c.length; }
-        resolve({ data: out, method: 8 });
-      } catch {
-        resolve({ data, method: 0 }); // store uncompressed on failure
-      }
-    });
-  }
+  function u16le(n) { return [n & 0xff, (n >> 8) & 0xff]; }
+  function u32le(n) { return [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]; }
 
-  function le16(n) { return [n & 0xFF, (n >> 8) & 0xFF]; }
-  function le32(n) { return [n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF]; }
-
-  async function buildZip(files) {
-    // files = [{name, data: Uint8Array}]
-    const localHeaders = [];
-    const centralDirs  = [];
+  function buildZip(files) {
+    const entries = [];
     let offset = 0;
+    const allBytes = [];
 
-    for (const file of files) {
-      const nameBytes = uint8(file.name);
-      const rawData   = file.data;
-      const { data: compData, method } = await deflateRaw(rawData);
-      const crc  = crc32(rawData);
-      const lh   = new Uint8Array([
-        0x50, 0x4B, 0x03, 0x04,        // local file header sig
-        0x14, 0x00,                    // version needed
-        0x00, 0x00,                    // general purpose bit flag
-        ...le16(method),               // compression method
-        0x00, 0x00, 0x00, 0x00,        // last mod time/date (zero)
-        ...le32(crc),                  // CRC-32
-        ...le32(compData.length),      // compressed size
-        ...le32(rawData.length),       // uncompressed size
-        ...le16(nameBytes.length),     // file name length
-        0x00, 0x00,                    // extra field length
-        ...nameBytes,
-        ...compData,
+    files.forEach(({ name, data }) => {
+      const nameBuf = uint8(name);
+      const crc     = crc32(data);
+      const local   = new Uint8Array([
+        0x50,0x4b,0x03,0x04,
+        20,0, 0,0, 0,0, 0,0, 0,0,
+        ...u32le(crc),
+        ...u32le(data.length),
+        ...u32le(data.length),
+        ...u16le(nameBuf.length),
+        0,0,
+        ...nameBuf,
+        ...data,
       ]);
-      localHeaders.push(lh);
+      entries.push({ name: nameBuf, crc, size: data.length, offset });
+      offset += local.length;
+      allBytes.push(...local);
+    });
 
+    const cdStart = offset;
+    entries.forEach(({ name: nameBuf, crc, size, offset: off }) => {
       const cd = new Uint8Array([
-        0x50, 0x4B, 0x01, 0x02,        // central dir sig
-        0x14, 0x00,                    // version made by
-        0x14, 0x00,                    // version needed
-        0x00, 0x00,                    // general purpose
-        ...le16(method),
-        0x00, 0x00, 0x00, 0x00,        // last mod
-        ...le32(crc),
-        ...le32(compData.length),
-        ...le32(rawData.length),
-        ...le16(nameBytes.length),
-        0x00, 0x00,                    // extra length
-        0x00, 0x00,                    // comment length
-        0x00, 0x00,                    // disk start
-        0x00, 0x00,                    // internal attribs
-        0x00, 0x00, 0x00, 0x00,        // external attribs
-        ...le32(offset),               // relative offset of local header
-        ...nameBytes,
+        0x50,0x4b,0x01,0x02,
+        20,0, 20,0, 0,0, 0,0, 0,0, 0,0,
+        ...u32le(crc),
+        ...u32le(size),
+        ...u32le(size),
+        ...u16le(nameBuf.length),
+        0,0, 0,0, 0,0, 0,0,
+        0,0,0,0,
+        ...u32le(off),
+        ...nameBuf,
       ]);
-      centralDirs.push(cd);
-      offset += lh.length;
-    }
+      allBytes.push(...cd);
+    });
 
-    const cdSize   = centralDirs.reduce((s, c) => s + c.length, 0);
-    const eocd = new Uint8Array([
-      0x50, 0x4B, 0x05, 0x06,          // end of central dir sig
-      0x00, 0x00,                      // disk number
-      0x00, 0x00,                      // disk with start of CD
-      ...le16(files.length),           // entries on this disk
-      ...le16(files.length),           // total entries
-      ...le32(cdSize),                 // size of CD
-      ...le32(offset),                 // offset of CD
-      0x00, 0x00,                      // comment length
+    const cdSize = allBytes.length - cdStart;
+    const eocd   = new Uint8Array([
+      0x50,0x4b,0x05,0x06,
+      0,0, 0,0,
+      ...u16le(entries.length), ...u16le(entries.length),
+      ...u32le(cdSize), ...u32le(cdStart), 0,0,
     ]);
+    allBytes.push(...eocd);
 
-    const parts = [...localHeaders, ...centralDirs, eocd];
-    const totalLen = parts.reduce((s, p) => s + p.length, 0);
-    const out = new Uint8Array(totalLen);
-    let pos = 0;
-    for (const p of parts) { out.set(p, pos); pos += p.length; }
-    return out;
+    return new Uint8Array(allBytes);
   }
 
-  // ── OOXML helpers ────────────────────────────────────
+  // ── Shared strings table ─────────────────────────────
 
-  function xlsxEscape(v) {
-    if (v === null || v === undefined) return '';
-    return String(v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-  }
-
-  // Shared strings table builder
   class SharedStrings {
-    constructor() { this.map = new Map(); this.list = []; }
-    idx(val) {
-      const s = String(val ?? '');
-      if (this.map.has(s)) return this.map.get(s);
-      const i = this.list.length;
-      this.list.push(s);
-      this.map.set(s, i);
-      return i;
+    constructor() { this._map = new Map(); this._list = []; }
+    add(str) {
+      const s = String(str ?? '');
+      if (!this._map.has(s)) { this._map.set(s, this._list.length); this._list.push(s); }
+      return this._map.get(s);
     }
     xml() {
-      const items = this.list.map(s =>
+      const items = this._list.map(s =>
         `<si><t xml:space="preserve">${xlsxEscape(s)}</t></si>`
       ).join('');
       return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${this.list.length}" uniqueCount="${this.list.length}">${items}</sst>`;
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${this._list.length}" uniqueCount="${this._list.length}">${items}</sst>`;
     }
+    get size() { return this._list.length; }
   }
 
-  function colLetter(n) { // 1-based → A, B, ... Z, AA ...
-    let s = '';
-    while (n > 0) { s = String.fromCharCode(65 + ((n - 1) % 26)) + s; n = Math.floor((n - 1) / 26); }
-    return s;
+  function xlsxEscape(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
   }
 
-  /**
-   * Build a single worksheet XML.
-   * rows: array of arrays; first row treated as header (bold via styleIndex=1).
-   * numCols: set of 0-based column indices that are numeric.
-   */
-  function buildSheetXML(rows, ss, numCols = new Set(), dateCols = new Set()) {
-    if (!rows.length) return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>`;
+  // ── Style index constants (matches styles.xml below) ─
+  // 0 = default, 1 = bold-blue-header, 2 = number-2dp,
+  // 3 = date, 4 = bold-default, 5 = number-integer,
+  // 6 = percent, 7 = bold-green-header, 8 = bold-orange-header
+  const XS = { DEFAULT: 0, HDR: 1, NUM: 2, DATE: 3, BOLD: 4, INT: 5, PCT: 6, HDR_GREEN: 7, HDR_ORANGE: 8 };
 
-    const colCount = rows[0].length;
-    // Auto-widths
-    const widths = Array(colCount).fill(10);
-    rows.forEach(r => r.forEach((v, ci) => {
-      const len = String(v ?? '').length;
-      if (len + 2 > widths[ci]) widths[ci] = Math.min(len + 2, 40);
-    }));
+  function buildSheetXML(rows, ss, numCols, dateCols, boldCols, pctCols) {
+    numCols  = numCols  || new Set();
+    dateCols = dateCols || new Set();
+    boldCols = boldCols || new Set();
+    pctCols  = pctCols  || new Set();
 
-    const cols = widths.map((w, i) =>
+    // Auto-width: track max char-length per column
+    const colWidths = [];
+    rows.forEach(row => {
+      row.forEach((cell, ci) => {
+        const len = String(cell ?? '').length;
+        colWidths[ci] = Math.min(60, Math.max(colWidths[ci] || 8, len + 2));
+      });
+    });
+
+    const cols = colWidths.map((w, i) =>
       `<col min="${i+1}" max="${i+1}" width="${w}" bestFit="1" customWidth="1"/>`
     ).join('');
 
     const sheetRows = rows.map((row, ri) => {
+      const isHeader = ri === 0;
       const cells = row.map((val, ci) => {
-        const addr = `${colLetter(ci + 1)}${ri + 1}`;
-        const isHeader = ri === 0;
-        const style = isHeader ? ' s="1"' : (numCols.has(ci) ? ' s="2"' : dateCols.has(ci) ? ' s="3"' : '');
+        const col = ci + 1;
+        const colLetter = String.fromCharCode(64 + (col <= 26 ? col : 65));
+        const addr = `${col <= 26 ? String.fromCharCode(64 + col) : String.fromCharCode(64 + Math.floor((col-1)/26)) + String.fromCharCode(65 + (col-1)%26)}${ri + 1}`;
+
+        if (isHeader) {
+          const si = ss.add(val ?? '');
+          return `<c r="${addr}" t="s" s="${XS.HDR}"><v>${si}</v></c>`;
+        }
 
         if (val === null || val === undefined || val === '') {
-          return `<c r="${addr}"${style}/>`;
+          return `<c r="${addr}"/>`;
         }
-        if (!isHeader && numCols.has(ci)) {
-          const n = Number(String(val).replace(/[^0-9.\-]/g, ''));
-          if (!isNaN(n)) return `<c r="${addr}" t="n"${style}><v>${n}</v></c>`;
+
+        if (dateCols.has(ci) && typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+          const d = new Date(val);
+          const serial = 25569 + (d.getTime() - d.getTimezoneOffset() * 60000) / 86400000;
+          return `<c r="${addr}" s="${XS.DATE}"><v>${serial.toFixed(0)}</v></c>`;
         }
-        // String cell via shared strings
-        const si = ss.idx(val);
-        return `<c r="${addr}" t="s"${style}><v>${si}</v></c>`;
+
+        if (pctCols.has(ci) && typeof val === 'number') {
+          return `<c r="${addr}" s="${XS.PCT}" t="n"><v>${val}</v></c>`;
+        }
+
+        if ((numCols.has(ci) || typeof val === 'number') && !isNaN(Number(val))) {
+          const s = boldCols.has(ci) ? XS.BOLD : Number.isInteger(Number(val)) ? XS.INT : XS.NUM;
+          return `<c r="${addr}" s="${s}" t="n"><v>${Number(val)}</v></c>`;
+        }
+
+        const si = ss.add(val ?? '');
+        return `<c r="${addr}" t="s" s="${boldCols.has(ci) ? XS.BOLD : XS.DEFAULT}"><v>${si}</v></c>`;
       }).join('');
       return `<row r="${ri + 1}">${cells}</row>`;
     }).join('');
 
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    return { xml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <cols>${cols}</cols>
   <sheetData>${sheetRows}</sheetData>
-</worksheet>`;
+</worksheet>`, hasChart: false };
   }
 
+  // ── Chart XML builders ───────────────────────────────
+
   /**
-   * Build a complete .xlsx from an array of sheets.
-   * sheets: [{name, rows, numCols?, dateCols?}]
+   * Build a bar chart OOXML for a sheet.
+   * dataRows: array of [label, value] (no header)
+   * title: chart title
+   * sheetIndex: 1-based sheet index where data lives
+   * dataStartRow: 1-based row where first data row is (after header)
+   * labelCol: 'A', valueCol: 'B'
+   */
+  function buildBarChartXML(title, sheetName, dataStartRow, dataCount, labelCol, valueCol) {
+    const ref  = (col, row) => `'${sheetName}'!$${col}$${row}`;
+    const cats = `<c:numRef><c:f>'${sheetName}'!$${labelCol}$${dataStartRow}:$${labelCol}$${dataStartRow+dataCount-1}</c:f></c:numRef>`;
+    const vals = `<c:numRef><c:f>'${sheetName}'!$${valueCol}$${dataStartRow}:$${valueCol}$${dataStartRow+dataCount-1}</c:f></c:numRef>`;
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"
+              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+              xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <c:autoTitleDeleted val="0"/>
+  <c:chart>
+    <c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${xlsxEscape(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>
+    <c:autoTitleDeleted val="0"/>
+    <c:plotArea>
+      <c:barChart>
+        <c:barDir val="bar"/>
+        <c:grouping val="clustered"/>
+        <c:ser>
+          <c:idx val="0"/><c:order val="0"/>
+          <c:spPr><a:solidFill><a:srgbClr val="2E7FFF"/></a:solidFill></c:spPr>
+          <c:cat><c:strRef><c:f>'${sheetName}'!$${labelCol}$${dataStartRow}:$${labelCol}$${dataStartRow+dataCount-1}</c:f></c:strRef></c:cat>
+          <c:val><c:numRef><c:f>'${sheetName}'!$${valueCol}$${dataStartRow}:$${valueCol}$${dataStartRow+dataCount-1}</c:f></c:numRef></c:val>
+        </c:ser>
+        <c:axId val="1"/><c:axId val="2"/>
+      </c:barChart>
+      <c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="2"/></c:catAx>
+      <c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="1"/></c:valAx>
+    </c:plotArea>
+    <c:legend><c:legendPos val="b"/></c:legend>
+    <c:plotVisOnly val="1"/>
+  </c:chart>
+</c:chartSpace>`;
+  }
+
+  function buildPieChartXML(title, sheetName, dataStartRow, dataCount, labelCol, valueCol) {
+    const COLORS = ['2E7FFF','1DB87E','F0A500','E03C50','8B5CF6','06B6D4','F59E0B','10B981','EF4444','6366F1'];
+    const slices = Array.from({ length: dataCount }, (_, i) =>
+      `<c:dPt><c:idx val="${i}"/><c:spPr><a:solidFill><a:srgbClr val="${COLORS[i % COLORS.length]}"/></a:solidFill></c:spPr></c:dPt>`
+    ).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"
+              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+              xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <c:chart>
+    <c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${xlsxEscape(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>
+    <c:autoTitleDeleted val="0"/>
+    <c:plotArea>
+      <c:pieChart>
+        <c:ser>
+          <c:idx val="0"/><c:order val="0"/>
+          ${slices}
+          <c:cat><c:strRef><c:f>'${sheetName}'!$${labelCol}$${dataStartRow}:$${labelCol}$${dataStartRow+dataCount-1}</c:f></c:strRef></c:cat>
+          <c:val><c:numRef><c:f>'${sheetName}'!$${valueCol}$${dataStartRow}:$${valueCol}$${dataStartRow+dataCount-1}</c:f></c:numRef></c:val>
+        </c:ser>
+        <c:firstSliceAng val="0"/>
+      </c:pieChart>
+    </c:plotArea>
+    <c:legend><c:legendPos val="r"/></c:legend>
+    <c:plotVisOnly val="1"/>
+  </c:chart>
+</c:chartSpace>`;
+  }
+
+  // ── Worksheet XML with chart drawing embed ────────────
+
+  function buildSheetXMLWithChart(rows, ss, numCols, dateCols, chartAnchor) {
+    const { xml } = buildSheetXML(rows, ss, numCols, dateCols);
+    // Inject drawing reference before closing worksheet tag
+    const withDrawing = xml.replace(
+      '</worksheet>',
+      `<drawing r:id="rId1"/></worksheet>`
+    );
+    return withDrawing;
+  }
+
+  // Drawing XML that places a chart at a fixed position
+  function buildDrawingXML(fromCol, fromRow, toCol, toRow) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <xdr:twoCellAnchor>
+    <xdr:from><xdr:col>${fromCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${fromRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+    <xdr:to><xdr:col>${toCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${toRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+    <xdr:graphicFrame macro="">
+      <xdr:nvGraphicFramePr>
+        <xdr:cNvPr id="2" name="Chart 1"/>
+        <xdr:cNvGraphicFramePr/>
+      </xdr:nvGraphicFramePr>
+      <xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>
+      <a:graphic>
+        <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">
+          <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId1"/>
+        </a:graphicData>
+      </a:graphic>
+    </xdr:graphicFrame>
+    <xdr:clientData/>
+  </xdr:twoCellAnchor>
+</xdr:wsDr>`;
+  }
+
+  // ── Main XLSX builder ─────────────────────────────────
+
+  /**
+   * sheets: [{
+   *   name, rows,
+   *   numCols?: Set<number>,   // 0-indexed column positions to format as numbers
+   *   dateCols?: Set<number>,  // columns to format as dates
+   *   boldCols?: Set<number>,  // columns to bold
+   *   chart?: { type: 'bar'|'pie', title, labelCol, valueCol, dataStartRow, dataCount }
+   * }]
    */
   async function buildXLSX(sheets) {
     const ss = new SharedStrings();
 
-    // Pre-pass: register all strings
-    const sheetXMLs = sheets.map(s =>
-      buildSheetXML(s.rows, ss, s.numCols || new Set(), s.dateCols || new Set())
-    );
+    const sheetData = sheets.map(s => {
+      const hasChart = !!s.chart;
+      let sheetXML;
+      if (hasChart) {
+        const { xml } = buildSheetXML(s.rows, ss, s.numCols, s.dateCols, s.boldCols, s.pctCols);
+        sheetXML = xml.replace('</worksheet>', '<drawing r:id="rId1"/></worksheet>');
+      } else {
+        sheetXML = buildSheetXML(s.rows, ss, s.numCols, s.dateCols, s.boldCols, s.pctCols).xml;
+      }
+      return { sheetXML, hasChart, chart: s.chart, name: s.name };
+    });
 
     const files = [];
 
@@ -8585,19 +8749,25 @@
     const sheetParts = sheets.map((_, i) =>
       `<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
     ).join('');
+    const chartParts = sheetData
+      .map((s, i) => s.hasChart
+        ? `<Override PartName="/xl/charts/chart${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>
+           <Override PartName="/xl/drawings/drawing${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`
+        : ''
+      ).join('');
+
     files.push({ name: '[Content_Types].xml', data: uint8(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  ${sheetParts}
+  ${sheetParts}${chartParts}
 </Types>`)
     });
 
-    // _rels/.rels
     files.push({ name: '_rels/.rels', data: uint8(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -8605,7 +8775,6 @@
 </Relationships>`)
     });
 
-    // xl/workbook.xml
     const sheetEls = sheets.map((s, i) =>
       `<sheet name="${xlsxEscape(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`
     ).join('');
@@ -8630,319 +8799,717 @@
 </Relationships>`)
     });
 
-    // xl/styles.xml — 3 styles: 0=default, 1=bold header, 2=number, 3=date
+    // Rich styles.xml — 9 styles
     files.push({ name: 'xl/styles.xml', data: uint8(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="2">
+  <numFmts count="3">
+    <numFmt numFmtId="164" formatCode="#,##0"/>
+    <numFmt numFmtId="165" formatCode="#,##0.00"/>
+    <numFmt numFmtId="166" formatCode="0.0%"/>
+  </numFmts>
+  <fonts count="5">
     <font><sz val="11"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
   </fonts>
-  <fills count="3">
+  <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1A65E8"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0F5132"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF7C3A00"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF0F4FF"/></patternFill></fill>
   </fills>
-  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="thin"><color rgb="FFCCCCCC"/></bottom><diagonal/></border>
+  </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="4">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
-    <xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
-    <xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+  <cellXfs count="9">
+    <xf numFmtId="0"   fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
+    <xf numFmtId="0"   fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+    <xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+    <xf numFmtId="14"  fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+    <xf numFmtId="0"   fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+    <xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+    <xf numFmtId="0"   fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+    <xf numFmtId="0"   fontId="4" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
   </cellXfs>
 </styleSheet>`)
     });
 
-    // xl/sharedStrings.xml
     files.push({ name: 'xl/sharedStrings.xml', data: uint8(ss.xml()) });
 
-    // worksheets
-    sheetXMLs.forEach((xml, i) => {
-      files.push({ name: `xl/worksheets/sheet${i+1}.xml`, data: uint8(xml) });
+    // Worksheets + charts/drawings
+    sheetData.forEach((s, i) => {
+      files.push({ name: `xl/worksheets/sheet${i+1}.xml`, data: uint8(s.sheetXML) });
+
+      if (s.hasChart) {
+        const ch = s.chart;
+        const chartXML = ch.type === 'pie'
+          ? buildPieChartXML(ch.title, s.name, ch.dataStartRow, ch.dataCount, ch.labelCol, ch.valueCol)
+          : buildBarChartXML(ch.title, s.name, ch.dataStartRow, ch.dataCount, ch.labelCol, ch.valueCol);
+
+        files.push({ name: `xl/charts/chart${i+1}.xml`, data: uint8(chartXML) });
+
+        const anchor = ch.anchor || { fromCol: 3, fromRow: 1, toCol: 10, toRow: 20 };
+        files.push({ name: `xl/drawings/drawing${i+1}.xml`,
+          data: uint8(buildDrawingXML(anchor.fromCol, anchor.fromRow, anchor.toCol, anchor.toRow)) });
+
+        // drawing rels
+        files.push({ name: `xl/drawings/_rels/drawing${i+1}.xml.rels`, data: uint8(
+          `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${i+1}.xml"/>
+</Relationships>`) });
+
+        // sheet rels for drawing
+        files.push({ name: `xl/worksheets/_rels/sheet${i+1}.xml.rels`, data: uint8(
+          `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${i+1}.xml"/>
+</Relationships>`) });
+      }
     });
 
     return buildZip(files);
   }
 
   async function downloadXLSX(sheets, filename) {
+    showToast(App.clinic?.language === 'ar' ? 'جارٍ إعداد الملف…' : 'Preparing Excel file…', 'info');
     const data = await buildXLSX(sheets);
     triggerDownload(data, filename + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    showToast('Excel file exported', 'success');
+    showToast(App.clinic?.language === 'ar' ? 'تم التصدير بنجاح ✓' : 'Excel exported ✓', 'success');
   }
 
-  // ── Per-page export functions ────────────────────────
+  // ═══════════════════════════════════════════════════
+  // PER-PAGE EXPORT FUNCTIONS
+  // ═══════════════════════════════════════════════════
 
-  // LEDGER
-  function getLedgerRows() {
-    const lang = App.clinic?.language || 'ar';
-    const tbody = document.getElementById('ledger-tbody');
-    const header = ['Date', 'Patient', 'Amount (IQD)', 'Method', 'Notes'];
-    const rows = [header];
-    tbody.querySelectorAll('tr').forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (tds.length < 5) return;
-      rows.push([
-        tds[0].textContent.trim(),
-        tds[1].textContent.trim(),
-        tds[2].textContent.trim().replace(/[^\d.-]/g, ''),
-        tds[3].textContent.trim(),
-        tds[4].textContent.trim(),
-      ]);
-    });
-    return rows;
+  // ── LEDGER ────────────────────────────────────────────
+
+  async function _fetchLedgerForExport() {
+    const cid  = App.clinic?.id;
+    const from = document.getElementById('ledger-from')?.value || daysAgoISO(30);
+    const to   = document.getElementById('ledger-to')?.value   || todayISO();
+    const method = document.getElementById('ledger-method')?.value || '';
+    let q = sb.from('payments')
+      .select('payment_date, amount, payment_method, notes, patients(full_name)')
+      .eq('clinic_id', cid)
+      .gte('payment_date', from)
+      .lte('payment_date', to)
+      .order('payment_date', { ascending: false });
+    if (method) q = q.eq('payment_method', method);
+    const { data } = await q;
+    return data || [];
   }
 
   function exportLedgerCSV() {
-    const from = document.getElementById('ledger-from')?.value || '';
-    const to   = document.getElementById('ledger-to')?.value   || '';
-    downloadCSV(getLedgerRows(), `ledger_${from}_${to}`);
+    _fetchLedgerForExport().then(data => {
+      const header = ['Date', 'Patient', 'Amount (IQD)', 'Method', 'Notes'];
+      const rows = data.map(r => [r.payment_date, r.patients?.full_name||'', r.amount||0, r.payment_method||'', r.notes||'']);
+      downloadCSV([header, ...rows], `ledger_${todayISO()}`);
+    });
   }
 
   async function exportLedgerExcel() {
+    const data = await _fetchLedgerForExport();
     const from = document.getElementById('ledger-from')?.value || '';
     const to   = document.getElementById('ledger-to')?.value   || '';
-    const rows = getLedgerRows();
-    await downloadXLSX([{
-      name: 'Daily Ledger',
-      rows,
-      numCols: new Set([2]),
-    }], `ledger_${from}_${to}`);
+
+    // Build daily totals for chart
+    const dayMap = {};
+    data.forEach(r => { dayMap[r.payment_date] = (dayMap[r.payment_date]||0) + Number(r.amount||0); });
+    const daySummary = Object.entries(dayMap).sort((a,b)=>a[0].localeCompare(b[0]));
+
+    const mainHeader = ['Date', 'Patient', 'Amount (IQD)', 'Method', 'Notes'];
+    const mainRows   = data.map(r => [r.payment_date, r.patients?.full_name||'', Number(r.amount||0), r.payment_method||'', r.notes||'']);
+
+    const summaryHeader = ['Date', 'Total (IQD)', 'Cash (IQD)', 'Card (IQD)'];
+    const summaryRows   = Object.entries(dayMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([d, tot]) => {
+      const dayRows = data.filter(r => r.payment_date === d);
+      const cash = dayRows.filter(r=>r.payment_method==='cash').reduce((s,r)=>s+Number(r.amount||0),0);
+      const card = dayRows.filter(r=>r.payment_method==='card').reduce((s,r)=>s+Number(r.amount||0),0);
+      return [d, tot, cash, card];
+    });
+
+    const total = data.reduce((s,r)=>s+Number(r.amount||0),0);
+    const cash  = data.filter(r=>r.payment_method==='cash').reduce((s,r)=>s+Number(r.amount||0),0);
+    const card  = data.filter(r=>r.payment_method==='card').reduce((s,r)=>s+Number(r.amount||0),0);
+
+    const methodHeader = ['Method', 'Amount (IQD)', 'Count', '% of Total'];
+    const methodRows   = [
+      ['Cash', cash, data.filter(r=>r.payment_method==='cash').length, total ? cash/total : 0],
+      ['Card', card, data.filter(r=>r.payment_method==='card').length, total ? card/total : 0],
+    ];
+
+    await downloadXLSX([
+      {
+        name: 'Daily Ledger',
+        rows: [mainHeader, ...mainRows],
+        numCols: new Set([2]),
+        dateCols: new Set([0]),
+      },
+      {
+        name: 'Daily Summary',
+        rows: [summaryHeader, ...summaryRows],
+        numCols: new Set([1,2,3]),
+        dateCols: new Set([0]),
+        chart: {
+          type: 'bar', title: 'Daily Revenue',
+          dataStartRow: 2, dataCount: summaryRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 5, fromRow: 1, toCol: 14, toRow: 22 },
+        },
+      },
+      {
+        name: 'By Payment Method',
+        rows: [methodHeader, ...methodRows],
+        numCols: new Set([1,2]),
+        pctCols: new Set([3]),
+        chart: {
+          type: 'pie', title: 'Cash vs Card',
+          dataStartRow: 2, dataCount: methodRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 5, fromRow: 1, toCol: 14, toRow: 22 },
+        },
+      },
+    ], `ledger_${from}_${to}`);
   }
 
-  // DEBTORS
-  function getDebtorsRows() {
-    const tbody = document.getElementById('debtors-tbody');
-    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
-    const rows = [header];
-    // Use LensInv pattern — pull from Supabase cache via DOM
-    tbody.querySelectorAll('tr').forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (tds.length < 6) return;
-      rows.push([
-        tds[0].textContent.trim(),
-        tds[1].textContent.trim().replace(/[^\d.-]/g, ''),
-        tds[2].textContent.trim().replace(/[^\d.-]/g, ''),
-        tds[3].textContent.trim().replace(/[^\d.-]/g, ''),
-        tds[4].textContent.trim(),
-        tds[5].textContent.trim(),
-      ]);
-    });
-    return rows;
-  }
+  // ── DEBTORS ───────────────────────────────────────────
 
   async function _fetchDebtorsForExport() {
     const cid    = App.clinic?.id;
     const filter = document.getElementById('debtors-filter')?.value || 'all';
     const { data } = await sb.from('orders')
-      .select('id, total, paid, remaining, payment_status, order_date, patient_id, patients(full_name, phone)')
+      .select('id, total, paid, remaining, payment_status, order_date, patient_id, patients(full_name, phone, age, gender)')
       .eq('clinic_id', cid)
       .in('payment_status', filter === 'all' ? ['unpaid','partial'] : [filter])
       .order('order_date', { ascending: false });
-    return (data || []).map(r => [
-      r.patients?.full_name || '',
-      r.patients?.phone || '',
-      r.total || 0,
-      r.paid || 0,
-      r.remaining || 0,
-      r.payment_status,
-      r.order_date || '',
-    ]);
+    return (data || []);
   }
 
   function exportDebtorsCSV() {
-    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
-    _fetchDebtorsForExport().then(dataRows => {
-      downloadCSV([header, ...dataRows], `debtors_${todayISO()}`);
+    _fetchDebtorsForExport().then(data => {
+      const header = ['Patient', 'Phone', 'Age', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
+      const rows = data.map(r => [
+        r.patients?.full_name||'', r.patients?.phone||'', r.patients?.age||'',
+        r.total||0, r.paid||0, r.remaining||0, r.payment_status, r.order_date||'',
+      ]);
+      downloadCSV([header, ...rows], `debtors_${todayISO()}`);
     });
   }
 
   async function exportDebtorsExcel() {
-    const header = ['Patient', 'Phone', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
-    const dataRows = await _fetchDebtorsForExport();
-    await downloadXLSX([{
-      name: 'Debtors',
-      rows: [header, ...dataRows],
-      numCols: new Set([2, 3, 4]),
-    }], `debtors_${todayISO()}`);
+    const data = await _fetchDebtorsForExport();
+    const header = ['Patient', 'Phone', 'Age', 'Gender', 'Total (IQD)', 'Paid (IQD)', 'Remaining (IQD)', 'Status', 'Date'];
+    const rows = data.map(r => [
+      r.patients?.full_name||'', r.patients?.phone||'', r.patients?.age||'', r.patients?.gender||'',
+      Number(r.total||0), Number(r.paid||0), Number(r.remaining||0), r.payment_status, r.order_date||'',
+    ]);
+    const totalRemaining = data.reduce((s,r)=>s+Number(r.remaining||0),0);
+    const unpaid  = data.filter(r=>r.payment_status==='unpaid').length;
+    const partial = data.filter(r=>r.payment_status==='partial').length;
+    const statusRows = [['Unpaid', unpaid], ['Partial', partial]];
+
+    await downloadXLSX([
+      {
+        name: 'Outstanding Debts',
+        rows: [header, ...rows],
+        numCols: new Set([4,5,6]),
+        dateCols: new Set([8]),
+      },
+      {
+        name: 'Debt by Status',
+        rows: [['Status','Count'], ...statusRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'pie', title: 'Debt Status Breakdown',
+          dataStartRow: 2, dataCount: statusRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+    ], `debtors_${todayISO()}`);
   }
 
-  // LENS INVENTORY
+  // ── LENS INVENTORY ────────────────────────────────────
+
   async function _fetchLensesForExport() {
     const cid        = App.clinic?.id;
     const typeFilter = document.getElementById('lenses-filter-type')?.value || '';
-    const search     = document.getElementById('lenses-search')?.value?.trim() || '';
-    const sphFilter  = document.getElementById('lenses-filter-sph')?.value?.trim() || '';
-    const cylFilter  = document.getElementById('lenses-filter-cyl')?.value?.trim() || '';
-    const MATERIAL_LABELS = { plastic: 'Plastic', glass: 'Glass', contact: 'Contact Lens' };
-
+    const MATERIAL_LABELS = { plastic:'Plastic', glass:'Glass', contact:'Contact Lens' };
     let q = sb.from('lenses').select('*').eq('clinic_id', cid).order('sphere').order('cylinder');
     if (typeFilter) q = q.eq('lens_type', typeFilter);
-    if (search)     q = q.or(`brand.ilike.%${search}%,material.ilike.%${search}%,coating.ilike.%${search}%`);
-    if (sphFilter !== '') { const v = parseFloat(sphFilter); if (!isNaN(v)) q = q.gte('sphere', v - 0.001).lte('sphere', v + 0.001); }
-    if (cylFilter !== '') { const v = parseFloat(cylFilter); if (!isNaN(v)) q = q.gte('cylinder', v - 0.001).lte('cylinder', v + 0.001); }
-
     const { data } = await q;
-    return (data || []).map(l => [
-      LENS_TYPE_LABELS[l.lens_type] || l.lens_type || '',
-      MATERIAL_LABELS[l.material]  || l.material  || '',
-      l.coating    || '',
-      l.sphere     ?? '',
-      l.cylinder   ?? 0,
-      l.quantity   ?? 0,
-      l.restock_level ?? 2,
-      l.sell_price ?? 0,
-      l.cost_price ?? 0,
-      l.notes      || '',
-    ]);
+    return (data||[]).map(l => ({
+      ...l,
+      lens_type_label: LENS_TYPE_LABELS[l.lens_type]||l.lens_type||'',
+      material_label:  MATERIAL_LABELS[l.material]||l.material||'',
+      stock_value:     Number(l.quantity||0) * Number(l.cost_price||0),
+    }));
   }
 
   function exportLensesCSV() {
-    const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
-    _fetchLensesForExport().then(rows => downloadCSV([header, ...rows], `lens_inventory_${todayISO()}`));
+    _fetchLensesForExport().then(data => {
+      const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Restock At', 'Sell Price', 'Cost Price', 'Notes'];
+      const rows = data.map(l => [l.lens_type_label, l.material_label, l.coating||'', l.sphere||0, l.cylinder||0, l.quantity||0, l.restock_at||2, l.sell_price||0, l.cost_price||0, l.notes||'']);
+      downloadCSV([header, ...rows], `lenses_${todayISO()}`);
+    });
   }
 
   async function exportLensesExcel() {
-    const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
-    const rows   = await _fetchLensesForExport();
-    await downloadXLSX([{
-      name: 'Lens Inventory',
-      rows: [header, ...rows],
-      numCols: new Set([3, 4, 5, 6, 7, 8]),
-    }], `lens_inventory_${todayISO()}`);
+    const data = await _fetchLensesForExport();
+    const header = ['Type', 'Material', 'Coating', 'SPH', 'CYL', 'Qty', 'Restock At', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Stock Value (IQD)', 'Status', 'Notes'];
+    const rows = data.map(l => [
+      l.lens_type_label, l.material_label, l.coating||'',
+      Number(l.sphere||0), Number(l.cylinder||0),
+      Number(l.quantity||0), Number(l.restock_at||2),
+      Number(l.sell_price||0), Number(l.cost_price||0),
+      l.stock_value,
+      l.quantity <= 0 ? 'Out of Stock' : l.quantity <= (l.restock_at||2) ? 'Low Stock' : 'OK',
+      l.notes||'',
+    ]);
+
+    // By type summary
+    const byType = {};
+    data.forEach(l => { byType[l.lens_type_label] = (byType[l.lens_type_label]||0) + Number(l.quantity||0); });
+    const byTypeRows = Object.entries(byType).map(([t,q]) => [t, q]);
+
+    // Stock value by type
+    const valByType = {};
+    data.forEach(l => { valByType[l.lens_type_label] = (valByType[l.lens_type_label]||0) + l.stock_value; });
+    const valByTypeRows = Object.entries(valByType).map(([t,v]) => [t, v]);
+
+    // Low stock
+    const lowRows = data.filter(l => l.quantity <= (l.restock_at||2));
+
+    await downloadXLSX([
+      {
+        name: 'Lens Inventory',
+        rows: [header, ...rows],
+        numCols: new Set([3,4,5,6,7,8,9]),
+      },
+      {
+        name: 'Qty by Type',
+        rows: [['Type','Quantity'], ...byTypeRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'bar', title: 'Lens Quantity by Type',
+          dataStartRow: 2, dataCount: byTypeRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+      {
+        name: 'Stock Value by Type',
+        rows: [['Type','Stock Value (IQD)'], ...valByTypeRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'pie', title: 'Stock Value Distribution',
+          dataStartRow: 2, dataCount: valByTypeRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+      ...(lowRows.length ? [{
+        name: 'Restock Alerts',
+        rows: [['Type','Material','Coating','SPH','CYL','Qty','Restock At'],
+          ...lowRows.map(l=>[l.lens_type_label,l.material_label,l.coating||'',Number(l.sphere||0),Number(l.cylinder||0),Number(l.quantity||0),Number(l.restock_at||2)])],
+        numCols: new Set([3,4,5,6]),
+      }] : []),
+    ], `lenses_${todayISO()}`);
   }
 
-  // FRAME INVENTORY
+  // ── FRAME INVENTORY ───────────────────────────────────
+
   async function _fetchFramesForExport() {
-    const cid        = App.clinic?.id;
-    const typeFilter = document.getElementById('frames-filter-type')?.value || '';
-    const search     = document.getElementById('frames-search')?.value?.trim() || '';
-    const FRAME_MATERIAL_LABELS = { metal: 'Metal', plastic: 'Plastic', titanium: 'Titanium' };
-    const FRAME_TYPE_LABELS = { full_rim: 'Full Rim', half_rim: 'Half Rim', rimless: 'Rimless', sunglass: 'Sunglass', kids: 'Kids', sport: 'Sport' };
-
-    let q = sb.from('frames').select('*').eq('clinic_id', cid).order('brand');
-    if (typeFilter) q = q.eq('frame_type', typeFilter);
-    if (search)     q = q.or(`brand.ilike.%${search}%,model.ilike.%${search}%,color.ilike.%${search}%`);
-
-    const { data } = await q;
-    return (data || []).map(f => [
-      f.brand        || '',
-      f.model        || '',
-      FRAME_TYPE_LABELS[f.frame_type]         || f.frame_type     || '',
-      FRAME_MATERIAL_LABELS[f.material]       || f.material       || '',
-      f.color        || '',
-      f.size         || '',
-      f.quantity     ?? 0,
-      f.restock_level ?? 1,
-      f.sell_price   ?? 0,
-      f.cost_price   ?? 0,
-      f.notes        || '',
-    ]);
+    const { data } = await sb.from('frames').select('*').eq('clinic_id', App.clinic?.id).order('brand');
+    return (data||[]).map(f => ({
+      ...f,
+      stock_value: Number(f.quantity||0) * Number(f.cost_price||0),
+    }));
   }
 
   function exportFramesCSV() {
-    const header = ['Brand', 'Model', 'Type', 'Material', 'Color', 'Size', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
-    _fetchFramesForExport().then(rows => downloadCSV([header, ...rows], `frame_inventory_${todayISO()}`));
+    _fetchFramesForExport().then(data => {
+      const header = ['Brand','Type','Color','Material','Qty','Restock At','Sell Price','Cost Price','Notes'];
+      const rows = data.map(f => [f.brand||'',f.frame_type||'',f.color||'',f.material||'',f.quantity||0,f.restock_at||1,f.sell_price||0,f.cost_price||0,f.notes||'']);
+      downloadCSV([header,...rows], `frames_${todayISO()}`);
+    });
   }
 
   async function exportFramesExcel() {
-    const header = ['Brand', 'Model', 'Type', 'Material', 'Color', 'Size', 'Qty', 'Min Stock', 'Sell Price (IQD)', 'Cost Price (IQD)', 'Notes'];
-    const rows   = await _fetchFramesForExport();
-    await downloadXLSX([{
-      name: 'Frame Inventory',
-      rows: [header, ...rows],
-      numCols: new Set([6, 7, 8, 9]),
-    }], `frame_inventory_${todayISO()}`);
+    const data = await _fetchFramesForExport();
+    const header = ['Brand','Type','Color','Material','Qty','Restock At','Sell Price (IQD)','Cost Price (IQD)','Stock Value (IQD)','Status','Notes'];
+    const rows = data.map(f => [
+      f.brand||'', f.frame_type||'', f.color||'', f.material||'',
+      Number(f.quantity||0), Number(f.restock_at||1),
+      Number(f.sell_price||0), Number(f.cost_price||0),
+      f.stock_value,
+      f.quantity <= 0 ? 'Out of Stock' : f.quantity <= (f.restock_at||1) ? 'Low Stock' : 'OK',
+      f.notes||'',
+    ]);
+
+    // By type
+    const byType = {};
+    data.forEach(f => { const t = f.frame_type||'Other'; byType[t]=(byType[t]||0)+Number(f.quantity||0); });
+    const byTypeRows = Object.entries(byType).map(([t,q])=>[t,q]);
+
+    // By brand
+    const byBrand = {};
+    data.forEach(f => { const b = f.brand||'Unknown'; byBrand[b]=(byBrand[b]||0)+Number(f.quantity||0); });
+    const byBrandRows = Object.entries(byBrand).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([b,q])=>[b,q]);
+
+    await downloadXLSX([
+      {
+        name: 'Frame Inventory',
+        rows: [header,...rows],
+        numCols: new Set([4,5,6,7,8]),
+      },
+      {
+        name: 'Qty by Type',
+        rows: [['Type','Quantity'],...byTypeRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'pie', title: 'Frames by Type',
+          dataStartRow: 2, dataCount: byTypeRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+      {
+        name: 'Top Brands',
+        rows: [['Brand','Quantity'],...byBrandRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'bar', title: 'Top Brands by Stock',
+          dataStartRow: 2, dataCount: byBrandRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+    ], `frames_${todayISO()}`);
   }
 
-  // REPORTS — multi-sheet workbook: Revenue + Payments + Top Frames + Top Lenses
+  // ── PATIENTS EXPORT ───────────────────────────────────
+
+  async function exportPatientsExcel() {
+    const cid = App.clinic?.id;
+    showToast(App.clinic?.language==='ar' ? 'جارٍ تجميع البيانات…' : 'Fetching patient data…', 'info');
+
+    const [patientsRes, ordersRes, rxRes] = await Promise.all([
+      sb.from('patients').select('id, full_name, phone, date_of_birth, age, gender, address, notes, created_at').eq('clinic_id', cid).order('created_at', { ascending: false }),
+      sb.from('orders').select('patient_id, total, paid, remaining, payment_status, order_date').eq('clinic_id', cid),
+      sb.from('prescriptions').select('patient_id, exam_date, od_sph, od_cyl, os_sph, os_cyl, lens_type, lens_material, coatings').eq('clinic_id', cid).order('exam_date', { ascending: false }),
+    ]);
+
+    const patients = patientsRes.data || [];
+    const orders   = ordersRes.data  || [];
+    const rxs      = rxRes.data      || [];
+
+    // Build lookup maps
+    const ordersByPt = {};
+    orders.forEach(o => { (ordersByPt[o.patient_id] = ordersByPt[o.patient_id]||[]).push(o); });
+    const rxByPt = {};
+    rxs.forEach(r => { (rxByPt[r.patient_id] = rxByPt[r.patient_id]||[]).push(r); });
+
+    const calcPtAge = p => {
+      if (p.date_of_birth) return calcAge(p.date_of_birth);
+      return p.age || '';
+    };
+
+    // ── Sheet 1: Full Patient List ──
+    const ptHeader = [
+      'Full Name','Phone','Age','Gender','Date of Birth','Address',
+      'Registered','Total Visits','Total Spent (IQD)','Paid (IQD)','Remaining (IQD)','Payment Status','Notes'
+    ];
+    const ptRows = patients.map(p => {
+      const ptOrders = ordersByPt[p.id] || [];
+      const ptRxs    = rxByPt[p.id]     || [];
+      const totalSpent = ptOrders.reduce((s,o)=>s+Number(o.total||0),0);
+      const totalPaid  = ptOrders.reduce((s,o)=>s+Number(o.paid||0),0);
+      const totalRem   = ptOrders.reduce((s,o)=>s+Number(o.remaining||0),0);
+      const statuses   = [...new Set(ptOrders.map(o=>o.payment_status))].join(', ');
+      return [
+        p.full_name, p.phone||'', calcPtAge(p)||'', p.gender||'',
+        p.date_of_birth||'', p.address||'',
+        p.created_at?.slice(0,10)||'',
+        ptRxs.length, totalSpent, totalPaid, totalRem, statuses, p.notes||'',
+      ];
+    });
+
+    // ── Sheet 2: Demographics ──
+    const ageGroups = {'0–17':0,'18–30':0,'31–45':0,'46–60':0,'61+':0,'Unknown':0};
+    const genderCounts = {Male:0,Female:0,Unknown:0};
+    patients.forEach(p => {
+      const a = Number(calcPtAge(p)||0);
+      if (!a) ageGroups['Unknown']++;
+      else if (a < 18) ageGroups['0–17']++;
+      else if (a < 31) ageGroups['18–30']++;
+      else if (a < 46) ageGroups['31–45']++;
+      else if (a < 61) ageGroups['46–60']++;
+      else              ageGroups['61+']++;
+      if (p.gender==='male') genderCounts.Male++;
+      else if (p.gender==='female') genderCounts.Female++;
+      else genderCounts.Unknown++;
+    });
+
+    const ageRows    = Object.entries(ageGroups).filter(([,v])=>v>0).map(([k,v])=>[k,v]);
+    const genderRows = Object.entries(genderCounts).filter(([,v])=>v>0).map(([k,v])=>[k,v]);
+
+    const demoHeader = ['Category','Count'];
+    const demoRows   = [
+      ['— Age Groups —',''],
+      ...ageRows,
+      ['',''],
+      ['— Gender —',''],
+      ...genderRows,
+      ['',''],
+      ['Total Patients', patients.length],
+    ];
+
+    // ── Sheet 3: Patient Rx Summary ──
+    const rxSummaryHeader = ['Patient','Phone','Age','Exam Date','OD SPH','OD CYL','OS SPH','OS CYL','Lens Type','Lens Material','Coatings'];
+    const rxSummaryRows = rxs.slice(0, 5000).map(r => {
+      const pt = patients.find(p=>p.id===r.patient_id);
+      return [
+        pt?.full_name||'', pt?.phone||'', calcPtAge(pt)||'',
+        r.exam_date||'',
+        Number(r.od_sph||0), Number(r.od_cyl||0),
+        Number(r.os_sph||0), Number(r.os_cyl||0),
+        r.lens_type||'', r.lens_material||'',
+        Array.isArray(r.coatings) ? r.coatings.join(', ') : (r.coatings||''),
+      ];
+    });
+
+    // ── Sheet 4: Monthly Registration ──
+    const monthMap = {};
+    patients.forEach(p => {
+      const m = p.created_at?.slice(0,7)||'';
+      if (m) monthMap[m] = (monthMap[m]||0)+1;
+    });
+    const monthRows = Object.entries(monthMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([m,c])=>[m,c]);
+
+    await downloadXLSX([
+      {
+        name: 'All Patients',
+        rows: [ptHeader,...ptRows],
+        numCols: new Set([7,8,9,10]),
+        dateCols: new Set([4,6]),
+      },
+      {
+        name: 'Age Groups',
+        rows: [['Age Group','Count'],...ageRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'bar', title: 'Patients by Age Group',
+          dataStartRow: 2, dataCount: ageRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+      {
+        name: 'Gender Split',
+        rows: [['Gender','Count'],...genderRows],
+        numCols: new Set([1]),
+        chart: {
+          type: 'pie', title: 'Gender Distribution',
+          dataStartRow: 2, dataCount: genderRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        },
+      },
+      {
+        name: 'Monthly Registrations',
+        rows: [['Month','New Patients'],...monthRows],
+        numCols: new Set([1]),
+        ...(monthRows.length > 0 ? { chart: {
+          type: 'bar', title: 'New Patients per Month',
+          dataStartRow: 2, dataCount: monthRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 14, toRow: 24 },
+        }} : {}),
+      },
+      {
+        name: 'Prescriptions',
+        rows: [rxSummaryHeader,...rxSummaryRows],
+        numCols: new Set([4,5,6,7]),
+        dateCols: new Set([3]),
+      },
+    ], `patients_export_${todayISO()}`);
+  }
+
+  function exportPatientsCSV() {
+    const cid = App.clinic?.id;
+    sb.from('patients').select('full_name,phone,date_of_birth,age,gender,address,notes,created_at').eq('clinic_id',cid).then(({data}) => {
+      const header = ['Full Name','Phone','Age','Gender','Date of Birth','Address','Registered','Notes'];
+      const rows = (data||[]).map(p => [p.full_name,p.phone||'',calcAge(p.date_of_birth)||p.age||'',p.gender||'',p.date_of_birth||'',p.address||'',p.created_at?.slice(0,10)||'',p.notes||'']);
+      downloadCSV([header,...rows], `patients_${todayISO()}`);
+    });
+  }
+
+  // ── REPORTS EXPORT (comprehensive) ───────────────────
+
   async function _fetchReportsForExport() {
     const cid  = App.clinic?.id;
     const days = parseInt(document.getElementById('reports-period')?.value || '30');
     const from = daysAgoISO(days);
-    const to   = todayISO();
 
-    const [pmtsRes, rxRes, debtRes, topFRes, topLRes] = await Promise.all([
+    const [pmtRes, rxRes, debtRes, topFRes, topLRes] = await Promise.all([
       sb.from('payments')
-        .select('payment_date, amount, payment_method, patients(full_name)')
-        .eq('clinic_id', cid).gte('payment_date', from).lte('payment_date', to)
-        .order('payment_date'),
+        .select('payment_date, amount, payment_method, patients(full_name, age, gender)')
+        .eq('clinic_id', cid).gte('payment_date', from)
+        .order('payment_date', { ascending: false }),
       sb.from('prescriptions')
-        .select('exam_date, od_sph, od_cyl, os_sph, os_cyl, lens_type, patients(full_name)')
-        .eq('clinic_id', cid).gte('exam_date', from).lte('exam_date', to)
+        .select('exam_date, lens_type, lens_material, coatings, od_sph, od_cyl, os_sph, os_cyl, patients(full_name, age, gender)')
+        .eq('clinic_id', cid).gte('exam_date', from)
         .order('exam_date', { ascending: false }),
       sb.from('orders')
         .select('remaining, payment_status, order_date, patients(full_name, phone)')
         .eq('clinic_id', cid).in('payment_status', ['unpaid','partial']),
       sb.from('orders')
-        .select('frame_id, frames!orders_frame_id_fkey(brand, model)')
-        .eq('clinic_id', cid).not('frame_id', 'is', null).gte('order_date', from),
+        .select('frame_id, frames(brand, frame_type, color)')
+        .eq('clinic_id', cid).gte('order_date', from).not('frame_id','is',null),
       sb.from('orders')
-        .select('lens_id, lenses!orders_lens_id_fkey(lens_type, material)')
-        .eq('clinic_id', cid).not('lens_id', 'is', null).gte('order_date', from),
+        .select('lens_id, lenses(lens_type, material, coating)')
+        .eq('clinic_id', cid).gte('order_date', from).not('lens_id','is',null),
     ]);
 
-    // Sheet 1: Payments
-    const pmtHeader = ['Date', 'Patient', 'Amount (IQD)', 'Method'];
-    const pmtRows = (pmtsRes.data || []).map(p => [
-      p.payment_date, p.patients?.full_name || '', p.amount || 0, p.payment_method || '',
-    ]);
+    const pmts = pmtRes.data || [];
+    const rxs  = rxRes.data  || [];
+    const debts = debtRes.data || [];
+    const topF  = topFRes.data || [];
+    const topL  = topLRes.data || [];
 
-    // Sheet 2: Prescriptions
-    const rxHeader = ['Date', 'Patient', 'OD SPH', 'OD CYL', 'OS SPH', 'OS CYL', 'Lens Type'];
-    const rxRows = (rxRes.data || []).map(r => [
-      r.exam_date, r.patients?.full_name || '',
-      r.od_sph ?? '', r.od_cyl ?? '', r.os_sph ?? '', r.os_cyl ?? '',
-      LENS_TYPE_LABELS[r.lens_type] || r.lens_type || '',
-    ]);
+    // Payments sheet
+    const pmtHeader = ['Date','Patient','Age','Gender','Amount (IQD)','Method'];
+    const pmtRows = pmts.map(p => [p.payment_date, p.patients?.full_name||'', p.patients?.age||'', p.patients?.gender||'', Number(p.amount||0), p.payment_method||'']);
 
-    // Sheet 3: Outstanding Debts
-    const debtHeader = ['Patient', 'Phone', 'Remaining (IQD)', 'Status', 'Date'];
-    const debtRows = (debtRes.data || []).map(o => [
-      o.patients?.full_name || '', o.patients?.phone || '',
-      o.remaining || 0, o.payment_status || '', o.order_date || '',
-    ]);
+    // Revenue by day
+    const dayRevMap = {};
+    pmts.forEach(p => { dayRevMap[p.payment_date] = (dayRevMap[p.payment_date]||0)+Number(p.amount||0); });
+    const dayRevRows = Object.entries(dayRevMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,v])=>[d,v]);
 
-    // Sheet 4: Top Frames
+    // Prescriptions sheet
+    const rxHeader = ['Date','Patient','Age','Gender','OD SPH','OD CYL','OS SPH','OS CYL','Lens Type','Material'];
+    const rxRows = rxs.map(r => [r.exam_date, r.patients?.full_name||'', r.patients?.age||'', r.patients?.gender||'', Number(r.od_sph||0), Number(r.od_cyl||0), Number(r.os_sph||0), Number(r.os_cyl||0), LENS_TYPE_LABELS[r.lens_type]||r.lens_type||'', r.lens_material||'']);
+
+    // Debts
+    const debtHeader = ['Patient','Phone','Remaining (IQD)','Status','Date'];
+    const debtRows = debts.map(d => [d.patients?.full_name||'', d.patients?.phone||'', Number(d.remaining||0), d.payment_status||'', d.order_date||'']);
+
+    // Top frames
     const frameCounts = {};
-    (topFRes.data || []).forEach(o => {
+    topF.forEach(o => {
       const k = o.frame_id;
-      const n = [o.frames?.brand, o.frames?.model].filter(Boolean).join(' ') || '—';
-      frameCounts[k] = { name: n, count: (frameCounts[k]?.count || 0) + 1 };
+      const n = [o.frames?.brand, o.frames?.color].filter(Boolean).join(' ')||'—';
+      frameCounts[k] = { name: n, count: (frameCounts[k]?.count||0)+1 };
     });
-    const topFrameHeader = ['Frame', 'Orders'];
-    const topFrameRows = Object.values(frameCounts).sort((a,b) => b.count - a.count)
-      .map(f => [f.name, f.count]);
+    const topFrameRows = Object.values(frameCounts).sort((a,b)=>b.count-a.count).slice(0,20).map(f=>[f.name,f.count]);
 
-    // Sheet 5: Top Lenses
+    // Top lenses
     const lensCounts = {};
-    (topLRes.data || []).forEach(o => {
+    topL.forEach(o => {
       const k = o.lens_id;
-      const n = [LENS_TYPE_LABELS[o.lenses?.lens_type]||o.lenses?.lens_type, o.lenses?.material].filter(Boolean).join(' · ') || '—';
-      lensCounts[k] = { name: n, count: (lensCounts[k]?.count || 0) + 1 };
+      const n = [LENS_TYPE_LABELS[o.lenses?.lens_type]||o.lenses?.lens_type, o.lenses?.material, o.lenses?.coating].filter(Boolean).join(' · ')||'—';
+      lensCounts[k] = { name: n, count: (lensCounts[k]?.count||0)+1 };
     });
-    const topLensHeader = ['Lens', 'Orders'];
-    const topLensRows = Object.values(lensCounts).sort((a,b) => b.count - a.count)
-      .map(l => [l.name, l.count]);
+    const topLensRows = Object.values(lensCounts).sort((a,b)=>b.count-a.count).slice(0,20).map(l=>[l.name,l.count]);
 
-    return { pmtHeader, pmtRows, rxHeader, rxRows, debtHeader, debtRows, topFrameHeader, topFrameRows, topLensHeader, topLensRows };
+    // Revenue by lens type
+    const lensTypeRev = {};
+    rxs.forEach(r => { const t = LENS_TYPE_LABELS[r.lens_type]||r.lens_type||'Other'; lensTypeRev[t]=(lensTypeRev[t]||0)+1; });
+    const lensTypeRows = Object.entries(lensTypeRev).sort((a,b)=>b[1]-a[1]).map(([t,c])=>[t,c]);
+
+    return {
+      pmtHeader, pmtRows, dayRevRows,
+      rxHeader, rxRows,
+      debtHeader, debtRows,
+      topFrameRows, topLensRows,
+      lensTypeRows,
+    };
   }
 
   function exportReportsCSV() {
     _fetchReportsForExport().then(d => {
-      downloadCSV([d.pmtHeader, ...d.pmtRows], `payments_${todayISO()}`);
+      downloadCSV([d.pmtHeader,...d.pmtRows], `payments_${todayISO()}`);
     });
   }
 
   async function exportReportsExcel() {
     const d = await _fetchReportsForExport();
     const days = document.getElementById('reports-period')?.value || '30';
+
     await downloadXLSX([
-      { name: 'Payments',          rows: [d.pmtHeader,      ...d.pmtRows],      numCols: new Set([2]) },
-      { name: 'Prescriptions',     rows: [d.rxHeader,       ...d.rxRows],       numCols: new Set([2,3,4,5]) },
-      { name: 'Outstanding Debts', rows: [d.debtHeader,     ...d.debtRows],     numCols: new Set([2]) },
-      { name: 'Top Frames',        rows: [d.topFrameHeader, ...d.topFrameRows], numCols: new Set([1]) },
-      { name: 'Top Lenses',        rows: [d.topLensHeader,  ...d.topLensRows],  numCols: new Set([1]) },
+      {
+        name: 'Payments',
+        rows: [d.pmtHeader,...d.pmtRows],
+        numCols: new Set([4]),
+        dateCols: new Set([0]),
+      },
+      {
+        name: 'Daily Revenue',
+        rows: [['Date','Revenue (IQD)'],...d.dayRevRows],
+        numCols: new Set([1]),
+        dateCols: new Set([0]),
+        ...(d.dayRevRows.length > 0 ? { chart: {
+          type: 'bar', title: `Daily Revenue (Last ${days} Days)`,
+          dataStartRow: 2, dataCount: d.dayRevRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 14, toRow: 24 },
+        }} : {}),
+      },
+      {
+        name: 'Prescriptions',
+        rows: [d.rxHeader,...d.rxRows],
+        numCols: new Set([4,5,6,7]),
+        dateCols: new Set([0]),
+      },
+      {
+        name: 'Lens Type Distribution',
+        rows: [['Lens Type','Count'],...d.lensTypeRows],
+        numCols: new Set([1]),
+        ...(d.lensTypeRows.length > 0 ? { chart: {
+          type: 'pie', title: 'Prescriptions by Lens Type',
+          dataStartRow: 2, dataCount: d.lensTypeRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        }} : {}),
+      },
+      {
+        name: 'Outstanding Debts',
+        rows: [d.debtHeader,...d.debtRows],
+        numCols: new Set([2]),
+        dateCols: new Set([4]),
+      },
+      {
+        name: 'Top Frames',
+        rows: [['Frame','Orders'],...d.topFrameRows],
+        numCols: new Set([1]),
+        ...(d.topFrameRows.length > 0 ? { chart: {
+          type: 'bar', title: 'Top Selling Frames',
+          dataStartRow: 2, dataCount: d.topFrameRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        }} : {}),
+      },
+      {
+        name: 'Top Lenses',
+        rows: [['Lens','Orders'],...d.topLensRows],
+        numCols: new Set([1]),
+        ...(d.topLensRows.length > 0 ? { chart: {
+          type: 'bar', title: 'Top Selling Lenses',
+          dataStartRow: 2, dataCount: d.topLensRows.length,
+          labelCol: 'A', valueCol: 'B',
+          anchor: { fromCol: 3, fromRow: 1, toCol: 12, toRow: 22 },
+        }} : {}),
+      },
     ], `noor_report_${days}d_${todayISO()}`);
   }
 
@@ -8950,8 +9517,23 @@
   // END CHUNK 14
   // ═══════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════
 
-  window.selectLens        = selectLensForEye; // keep legacy name
+
+  window.exportPatientsExcel  = exportPatientsExcel;
+  window.exportPatientsCSV    = exportPatientsCSV;
+  window.exportLedgerCSV      = exportLedgerCSV;
+  window.exportLedgerExcel    = exportLedgerExcel;
+  window.exportDebtorsCSV     = exportDebtorsCSV;
+  window.exportDebtorsExcel   = exportDebtorsExcel;
+  window.exportLensesCSV      = exportLensesCSV;
+  window.exportLensesExcel    = exportLensesExcel;
+  window.exportFramesCSV      = exportFramesCSV;
+  window.exportFramesExcel    = exportFramesExcel;
+  window.exportReportsCSV     = exportReportsCSV;
+  window.exportReportsExcel   = exportReportsExcel;
+  window.updatePatientAge        = updatePatientAge;
+  window.updatePatientDobFromAge = updatePatientDobFromAge;
   window.selectLensForEye  = selectLensForEye;
   window.updateLensPrice   = updateLensPrice;
   window.selectFrame       = selectFrame;
