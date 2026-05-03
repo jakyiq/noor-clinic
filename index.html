@@ -3753,23 +3753,28 @@
     lucide.createIcons();
 
     // Check existing session
-    const { data: { session } } = await sb.auth.getSession();
+    try {
+      const { data: { session } } = await sb.auth.getSession();
 
-    if (session) {
-      await loadAppForUser(session.user);
-    } else {
-      showScreen('auth');
-    }
-
-    // Listen for auth changes
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        await loadAppForUser(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        App.user = null; App.clinicUser = null; App.clinic = null;
+      if (session) {
+        await (window.loadAppForUser || loadAppForUser)(session.user);
+      } else {
         showScreen('auth');
       }
-    });
+
+      // Listen for auth changes
+      sb.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          await (window.loadAppForUser || loadAppForUser)(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          App.user = null; App.clinicUser = null; App.clinic = null;
+          showScreen('auth');
+        }
+      });
+    } catch (err) {
+      console.error('init error:', err);
+      showScreen('auth');
+    }
   }
 
   // ─────────────────────────────────────
@@ -9862,27 +9867,19 @@
 
   // ── Patch loadAppForUser to seed cache after login ─
   const _origLoadApp = loadAppForUser;
-  async function loadAppForUser(user) {
+  window.loadAppForUser = async function(user) {
     await _origLoadApp(user);
     // After successful login, seed the offline cache in the background
     if (App.clinic?.id) {
       Offline.cacheAll(App.clinic.id);
     }
-  }
+  };
 
   // ── Patch navigateTo to handle offline read pages ──
   const _origNavigateTo = navigateTo;
-  function navigateTo(page) {
-    // If offline and on a read-heavy page, show banner note
-    if (!Offline.isOnline) {
-      const cachePages = ['patients','lenses','frames','followup','debtors','ledger'];
-      if (cachePages.includes(page)) {
-        // Pages will load from IndexedDB fallbacks (where implemented)
-        // The banner already informs user
-      }
-    }
+  window.navigateTo = function(page) {
     _origNavigateTo(page);
-  }
+  };
 
   // ── Offline-aware patient fetch ──────────────────
   const _origFetchPatients = typeof fetchPatients !== 'undefined' ? fetchPatients : null;
@@ -9890,7 +9887,7 @@
   // ── Offline-aware loadLenses ─────────────────────
   // Wrap loadLenses to serve from cache when offline
   const _origLoadLenses = loadLenses;
-  async function loadLenses() {
+  window.loadLenses = async function() {
     if (Offline.isOnline) return _origLoadLenses();
     // Offline fallback: render from IDB
     const lang  = App.clinic?.language || 'ar';
@@ -9919,7 +9916,7 @@
 
   // ── Offline-aware loadFrames ─────────────────────
   const _origLoadFrames = loadFrames;
-  async function loadFrames() {
+  window.loadFrames = async function() {
     if (Offline.isOnline) return _origLoadFrames();
     const lang  = App.clinic?.language || 'ar';
     const cid   = App.clinic?.id;
@@ -9946,7 +9943,7 @@
 
   // ── Offline-aware loadFollowups ──────────────────
   const _origLoadFollowups = loadFollowups;
-  async function loadFollowups() {
+  window.loadFollowups = async function() {
     if (Offline.isOnline) return _origLoadFollowups();
     const lang   = App.clinic?.language || 'ar';
     const cid    = App.clinic?.id;
@@ -9999,16 +9996,15 @@
 
   // ── Register offline/online listeners at init time ─
   const _origInit = init;
-  async function init() {
+  window.init = async function() {
     await Offline.init();
     await _origInit();
-  }
+  };
 
   // ── Expose functions that were redefined ────────────
-  window.loadLenses    = loadLenses;
-  window.loadFrames    = loadFrames;
-  window.loadFollowups = loadFollowups;
-  window.navigateTo    = navigateTo;
+  window.loadLenses    = window.loadLenses;
+  window.loadFrames    = window.loadFrames;
+  window.loadFollowups = window.loadFollowups;
 
   // ── Settings page: show offline cache info ──────────
   // Patch loadSettings to add offline stats section
@@ -10076,7 +10072,7 @@
   // END CHUNK 16
   // ═══════════════════════════════════════════════════
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => window.init());
   </script>
 
 
@@ -11192,12 +11188,11 @@
   window.saSetLicense     = saSetLicense;
 
   // Hook into loadAppForUser to check SA access
-  const _saOrigLoad = loadAppForUser;
-  async function loadAppForUser(user) {
+  const _saOrigLoad = window.loadAppForUser;
+  window.loadAppForUser = async function(user) {
     await _saOrigLoad(user);
     _checkSuperadminAccess();
-  }
-  window.loadAppForUser = loadAppForUser;
+  };
 
   // ═══════════════════════════════════════════════════
   // CHUNK 23 — MOBILE RESPONSIVENESS CSS (injected)
@@ -11366,11 +11361,10 @@
 
   // Patch handleLogin to add rate-limit check
   const _secOrigLogin = handleLogin;
-  async function handleLogin(e) {
+  window.handleLogin = async function(e) {
     if (!checkAuthRateLimit()) { e.preventDefault(); return; }
     return _secOrigLogin(e);
-  }
-  window.handleLogin = handleLogin;
+  };
 
   // 6. Content Security Policy meta tag (defense-in-depth)
   (function() {
@@ -11453,7 +11447,7 @@
 
   // Enhanced applyLanguage — also translates placeholder text
   const _origApplyLanguage = applyLanguage;
-  function applyLanguage(lang, save = true) {
+  window.applyLanguage = function(lang, save = true) {
     _origApplyLanguage(lang, save);
 
     const isAr = lang === 'ar';
