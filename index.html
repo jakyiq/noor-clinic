@@ -24,201 +24,136 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- ═══════════════════════════════════════
-       LAYOUT FIX — Viewport-contained pages
-       Fixes: lenses, frames, restock, ledger,
-       debtors, reports overflow & overlap bugs
-  ═══════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+       LAYOUT FIX v2 — minimal, safe approach
+       Fixes: lenses/frames/restock/ledger/
+       debtors/reports blank + overflow bugs
+  ════════════════════════════════════════ -->
   <style id="layout-fix">
 
-    /* ── 1. App shell: true full-height, no extra scroll ── */
-    html, body {
-      height: 100%;
-      overflow: hidden; /* shell itself never scrolls */
-    }
-
-    #app {
-      height: 100%;
+    /* ── 1. Keep body from scrolling; only #main-content scrolls ── */
+    body {
       overflow: hidden;
     }
 
-    /* ── 2. Main content area: fill remaining height and scroll internally ── */
-    #main-content {
+    /* ── 2. #app fills the full viewport as a flex row ── */
+    #app {
       position: fixed;
-      inset-inline-start: var(--sidebar-width);
-      inset-inline-end: 0;
-      top: var(--topbar-height);
+      inset: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Override .hidden so #app can still be hidden by JS ── */
+    #app.hidden {
+      display: none !important;
+    }
+
+    /* ── 3. Sidebar: full-height fixed column, already position:fixed ── */
+    #sidebar {
+      top: 0;
       bottom: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 20px 24px 24px;
-      /* Remove the old margin/min-height approach */
+      height: 100%;
+    }
+
+    /* ── 4. Right-side column: everything after the sidebar ── */
+    #main-content {
+      position: fixed !important;
+      top: var(--topbar-height) !important;
+      bottom: 0 !important;
+      inset-inline-start: var(--sidebar-width) !important;
+      inset-inline-end: 0 !important;
       margin: 0 !important;
+      padding: 20px 24px 24px !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       min-height: unset !important;
+      height: auto !important;
     }
 
-    /* ── 3. Page views: block layout, no extra height forcing ── */
+    /* ── 5. Mobile: sidebar hidden, main-content full width ── */
+    @media (max-width: 768px) {
+      #main-content {
+        inset-inline-start: 0 !important;
+        padding: 12px !important;
+      }
+    }
+
+    /* ── 6. Page views — unchanged display logic, just prevent overflow ── */
     .page-view {
-      display: none;
       min-height: 0;
     }
 
-    .page-view.active {
-      display: block;
-      min-height: 0;
-    }
-
-    /* ── 4. Table wrap: max-height so tables don't push below fold ── */
+    /* ── 7. Table wraps: scroll horizontally, cap vertical height ── */
     .table-wrap {
-      overflow-x: auto;
-      overflow-y: auto;
-      max-height: calc(100vh - var(--topbar-height) - 220px);
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      max-height: calc(100vh - var(--topbar-height) - 200px);
+      -webkit-overflow-scrolling: touch;
     }
 
-    /* ── 5. Lenses toolbar: wrap the SPH/CYL power filters
-            so they don't overflow on medium-width screens ── */
-    #page-lenses .page-toolbar {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
+    /* ── 8. Lenses toolbar: wraps so SPH/CYL don't overflow ── */
+    #page-lenses .page-toolbar,
     #page-lenses .page-toolbar-start {
       flex-wrap: wrap;
       gap: 8px;
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-
-    /* SPH/CYL filter group — allow wrapping */
-    #page-lenses .page-toolbar-start > div:last-of-type {
-      flex-wrap: wrap;
-      gap: 6px;
     }
 
     #lenses-filter-sph,
     #lenses-filter-cyl {
-      width: 80px !important;
+      width: 82px !important;
       min-width: unset !important;
+      flex-shrink: 0;
     }
 
-    /* ── 6. Reports page: responsive KPI grid and chart grid ── */
-    #reports-kpis {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 20px;
+    /* ── 9. All page toolbars wrap on overflow ── */
+    .page-toolbar {
+      flex-wrap: wrap;
+    }
+    .page-toolbar-start,
+    .page-toolbar-end {
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    #page-reports .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    /* ── 7. Stat strip on ledger/debtors/restock: don't overflow ── */
+    /* ── 10. Stat strips wrap instead of overflow ── */
     .patients-stats {
-      display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 14px;
     }
-
     .pt-stat {
-      flex: 1 1 120px;
-      min-width: 100px;
+      flex: 1 1 110px;
+      min-width: 90px;
     }
 
-    /* ── 8. Restock page toolbar buttons ── */
-    #page-restock .page-toolbar {
-      flex-wrap: wrap;
+    /* ── 11. Reports: 4-col KPIs → 2-col on smaller screens ── */
+    @media (max-width: 1100px) {
+      #reports-kpis {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
     }
 
-    /* ── 9. Daily ledger toolbar: date inputs don't overflow ── */
-    #page-ledger .page-toolbar {
-      flex-wrap: wrap;
-      gap: 8px;
+    @media (max-width: 768px) {
+      #reports-kpis {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      #page-reports .grid-2 {
+        grid-template-columns: 1fr !important;
+      }
+      .table-wrap {
+        max-height: calc(100vh - var(--topbar-height) - 160px);
+      }
     }
 
-    #ledger-from,
-    #ledger-to {
-      min-width: unset !important;
-      width: auto !important;
-      flex: 1 1 120px;
-    }
-
-    /* ── 10. Debtors page toolbar ── */
-    #page-debtors .page-toolbar {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    /* ── 11. Grace banner: adjust main-content top when banner shows ── */
-    #grace-banner {
-      top: var(--topbar-height);
-    }
-
+    /* ── 12. Grace banner adjusts main-content top ── */
     #grace-banner ~ #main-content {
       top: calc(var(--topbar-height) + 36px) !important;
     }
 
-    /* ── 12. MOBILE: sidebar collapses, main-content fills screen ── */
-    @media (max-width: 768px) {
-      #main-content {
-        inset-inline-start: 0 !important;
-        padding: 12px 12px 16px !important;
-      }
-
-      #reports-kpis {
-        grid-template-columns: repeat(2, 1fr) !important;
-      }
-
-      #page-reports .grid-2 {
-        grid-template-columns: 1fr !important;
-      }
-
-      .table-wrap {
-        max-height: calc(100vh - var(--topbar-height) - 180px);
-      }
-    }
-
-    @media (max-width: 560px) {
-      #reports-kpis {
-        grid-template-columns: 1fr 1fr !important;
-      }
-
-      .page-toolbar-start,
-      .page-toolbar-end {
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      #lenses-filter-sph,
-      #lenses-filter-cyl {
-        width: 70px !important;
-      }
-
-      .pt-stat {
-        flex: 1 1 90px;
-        padding: 8px 12px;
-      }
-
-      .pt-stat-val {
-        font-size: 1rem !important;
-      }
-    }
-
-    /* ── 13. Sidebar: stays fixed, matches main-content height ── */
-    #sidebar {
-      top: 0;
-      bottom: 0;
-      overflow-y: auto;
-    }
-
-    /* ── 14. Topbar: always pinned at top ── */
-    #topbar {
-      position: fixed;
-      top: 0;
-      z-index: 200;
+    /* ── 13. Ledger date inputs don't force width ── */
+    #ledger-from, #ledger-to {
+      width: auto !important;
+      min-width: unset !important;
     }
 
   </style>
@@ -860,6 +795,7 @@
     /* ═══════════════════════════════════════
        MAIN APP LAYOUT
     ═══════════════════════════════════════ */
+    /* ── MAIN APP LAYOUT (overridden by #layout-fix) ── */
     #app {
       display: flex;
       min-height: 100vh;
@@ -1098,7 +1034,7 @@
       border: 2px solid var(--bg-surface);
     }
 
-    /* ── MAIN CONTENT ── (overridden by #layout-fix <style> in <head>) */
+    /* ── MAIN CONTENT (overridden by #layout-fix) ── */
     #main-content {
       margin-inline-start: var(--sidebar-width);
       margin-top: var(--topbar-height);
@@ -1369,6 +1305,8 @@
       }
 
       #menu-toggle { display: flex; }
+
+      /* #main-content mobile handled by #layout-fix */
 
       .grid-2, .grid-3, .grid-4 {
         grid-template-columns: 1fr;
@@ -4196,6 +4134,10 @@
 
     App.currentPage = page;
     closeSidebar();
+
+    // Scroll content area back to top on every page change
+    const mc = document.getElementById('main-content');
+    if (mc) mc.scrollTop = 0;
 
     // Refresh page data on navigate
     if (App.clinic) {
@@ -11396,80 +11338,47 @@
     style.textContent = `
       /* ── Sidebar mobile ── */
       @media (max-width: 768px) {
-        #sidebar {
-          transform: translateX(100%); /* RTL: slides from right */
-        }
+        #sidebar { transform: translateX(100%); }
         [dir="ltr"] #sidebar { transform: translateX(-100%); }
         #sidebar.open { transform: translateX(0) !important; }
-
-        /* Topbar */
         #topbar { padding: 0 12px; }
-
-        /* Prescription modal full-screen */
-        #rx-history-panel { display: none !important; }
-        .modal-rx { max-height: 100vh !important; }
       }
 
+      /* ── Small screens ── */
       @media (max-width: 560px) {
-        /* Tables → horizontal scroll on narrow */
-        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { min-width: 500px; }
-
-        /* Rx modal full-screen */
         .modal { margin: 0; border-radius: 0; height: 100vh; max-height: 100vh; width: 100vw; max-width: 100vw; }
         .modal-backdrop { padding: 0; align-items: flex-start; }
-
-        /* Stat cards stack */
         .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
         .stat-card { padding: 14px 12px; }
-
-        /* Toolbar wraps */
         .page-toolbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
         .page-toolbar-start, .page-toolbar-end { flex-wrap: wrap; gap: 6px; }
-
-        /* Auth card padding */
         .auth-card { padding: 28px 20px; }
-
-        /* Grid 2 → 1 col */
         .grid-2 { grid-template-columns: 1fr !important; }
-
-        /* Eye grid — make horizontally scrollable */
-        .eye-grid-header, .eye-grid {
-          min-width: 360px;
-        }
+        .eye-grid-header, .eye-grid { min-width: 360px; }
         .rx-section-body { overflow-x: auto; }
-
-        /* Dash two-col → single */
         .dash-two-col { grid-template-columns: 1fr !important; }
-
-        /* Invoice/ledger stats */
         .orders-summary { flex-wrap: wrap; }
-
-        /* Nav badge on mobile */
         .nav-badge { font-size: 0.6rem; padding: 1px 4px; }
-
-        /* Sidebar footer hidden on narrow */
         .sidebar-footer .user-role { display: none; }
-
-        /* Landing page hero text */
         .lp-headline { font-size: 1.8rem !important; }
         .lp-cta { flex-direction: column; align-items: center; }
         .lp-cta .btn { width: 100%; max-width: 300px; }
         .lp-features-grid, .lp-pricing-grid { grid-template-columns: 1fr !important; }
       }
 
-      /* Tablet: 560-768 */
+      /* ── Tablet ── */
       @media (min-width: 560px) and (max-width: 768px) {
         .grid-2 { grid-template-columns: 1fr 1fr; }
         .modal { max-width: 98vw; margin: 8px; border-radius: var(--radius-lg); }
         .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
       }
 
-      /* Topbar push down for offline banner */
+      /* Topbar push for offline banner */
       body.has-offline-banner #topbar { top: 38px; }
       body.has-offline-banner #main-content { top: calc(var(--topbar-height) + 38px) !important; }
 
-      /* Touch-friendly tap targets */
+      /* Touch targets */
       @media (hover: none) {
         .btn { min-height: 40px; }
         .btn-sm { min-height: 34px; }
@@ -11478,7 +11387,13 @@
         input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; }
       }
 
-      /* Followup filter select full-width on mobile */
+      /* Rx modal on mobile */
+      @media (max-width: 768px) {
+        #rx-history-panel { display: none !important; }
+        .modal-rx { max-height: 100vh !important; }
+      }
+
+      /* Filter inputs full-width on narrow */
       @media (max-width: 480px) {
         #followup-filter, #lenses-filter-type { width: 100%; min-width: unset; }
         .search-box { width: 100%; }
